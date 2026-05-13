@@ -69,7 +69,8 @@ def curl_post_form(url: str, data: dict) -> str:
 def curl_post_json(url: str, body: str, headers: dict) -> str:
     cmd = ["curl", "-s", "-k", "--max-time", "15", "-X", "POST", url,
            "-H", "Content-Type: application/json",
-           "-H", "Accept: application/json"]
+           "-H", "Accept: application/json",
+           "-H", "User-Agent: okhttp/4.9.3"]
     for k, v in headers.items():
         cmd += ["-H", f"{k}: {v}"]
     cmd += ["-d", body]

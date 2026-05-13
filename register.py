@@ -240,6 +240,8 @@ def verify_otp_signin(otp: str, sms_id: int, bearer: str) -> dict | None:
         print("  RAW:", raw[:300])
         return None
 
+    print(f"  Full raw JSON fields: {list(rj.keys())}")
+    print(f"  Full raw JSON: {json.dumps(rj)[:500]}")
     if "data" in rj:
         dec = decrypt_response(rj["data"], ts)
         print(f"  Decrypted: {dec}")

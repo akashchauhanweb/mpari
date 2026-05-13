@@ -157,6 +157,7 @@ FCM_TOKEN = (
 
 def login_user(otp: str, sms_id: int, mobile: str, bearer: str) -> dict | None:
     mpin  = input("   MPIN (6 digits): ").strip()
+    state = input("   State code (e.g. WB, DL, MH): ").strip().upper()
     ts    = str(int(time.time() * 1000))
     plain = json.dumps({
         "mparCitizenDevice": {
@@ -167,7 +168,12 @@ def login_user(otp: str, sms_id: int, mobile: str, bearer: str) -> dict | None:
             "deviceId":        "a1b2c3d4e5f6a7b8",
         },
         "smsOtp": {"otpSmsId": sms_id, "otpVal": otp},
-        "mparCitizenUser": {"ctzMobile": mobile, "ctzMpin": mpin},
+        "mparCitizenUser": {
+            "ctzMobile":     mobile,
+            "ctzMpin":       mpin,
+            "ctzMpinStatus": True,
+            "ctzStateCd":    state,
+        },
     }, separators=(",", ":"))
     wire  = json.dumps({"data": encrypt_body(plain, ts)})
 

@@ -142,7 +142,50 @@ def send_otp_reg(mobile: str, bearer: str, event: str = "CTZ_REG") -> tuple[int,
     return sms_id, status
 
 
-# ── Step 2A: Verify OTP (sign-in path) ───────────────────────────────────────
+# ── Step 2A: Login (existing account via getUserLoginToken) ──────────────────
+def login_user(otp: str, sms_id: int, mobile: str, bearer: str) -> dict | None:
+    ts    = str(int(time.time() * 1000))
+    plain = json.dumps({
+        "mparCitizenDevice": {
+            "deviceModel":     "Python-Simulator",
+            "deviceOsType":    "Android",
+            "deviceOsVersion": "14",
+            "deviceFcmToken":  "0000000000000000",
+            "deviceId":        "0000000000000000",
+        },
+        "smsOtp": {"otpSmsId": sms_id, "otpVal": otp},
+        "mparCitizenUser": {"ctzMobile": mobile},
+    }, separators=(",", ":"))
+    wire  = json.dumps({"data": encrypt_body(plain, ts)})
+
+    print(f"\n{'='*60}")
+    print(f"  STEP 2 — Login (existing account)")
+    print(f"  plain: {plain}")
+    print(f"{'='*60}")
+
+    raw = curl_post_json(CITIZEN_BASE + LOGIN_EP, wire, {
+        "timestamp":     ts,
+        "Param2":        "2.0.135",
+        "Param1":        "",
+        "Authorization": f"Bearer {bearer}",
+    })
+    try:
+        rj = json.loads(raw)
+    except Exception:
+        print("  RAW:", raw[:300])
+        return None
+    if "data" in rj:
+        dec = decrypt_response(rj["data"], ts)
+        print(f"  Decrypted: {dec}")
+        try:
+            return json.loads(dec)
+        except Exception:
+            return {"_raw": dec}
+    print("  Response:", rj)
+    return rj
+
+
+# ── Step 2B: Verify OTP (sign-in path) ───────────────────────────────────────
 def verify_otp_signin(otp: str, sms_id: int, bearer: str) -> dict | None:
     ts    = str(int(time.time() * 1000))
     plain = json.dumps({"smsOtp": {"otpSmsId": sms_id, "otpVal": otp}},
@@ -257,7 +300,7 @@ def main():
     otp = input(">> Enter OTP: ").strip()
 
     if event == "CTZ_SIG":
-        parsed = verify_otp_signin(otp, sms_id, bearer)
+        parsed = login_user(otp, sms_id, mobile, bearer)
     else:
         parsed = register_user(otp, sms_id, mobile, bearer)
 

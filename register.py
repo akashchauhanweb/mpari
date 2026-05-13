@@ -30,6 +30,7 @@ OAUTH_URL     = "https://delhigw.napix.gov.in/nic/parivahan/oauth2/token"
 ALERT_BASE    = "https://delhigw.napix.gov.in/nic/parivahan/mparivahan/alertsapi/"
 CITIZEN_BASE  = "https://delhigw.napix.gov.in/nic/parivahan/mparivahan/citizenapi/"
 SEND_OTP_EP   = "service/forwardOTPAlerts"
+VERIFY_OTP_EP = "service/validateOTPAlerts"
 LOGIN_EP      = "service/getUserLoginToken"
 CLIENT_ID     = "b91c303443f61b37106750823881cd2f"
 CLIENT_SECRET = "de83eeeb148878ae375f28756492e8a0"
@@ -141,7 +142,41 @@ def send_otp_reg(mobile: str, bearer: str, event: str = "CTZ_REG") -> tuple[int,
     return sms_id, status
 
 
-# ── Step 2: Register ──────────────────────────────────────────────────────────
+# ── Step 2A: Verify OTP (sign-in path) ───────────────────────────────────────
+def verify_otp_signin(otp: str, sms_id: int, bearer: str) -> dict | None:
+    ts    = str(int(time.time() * 1000))
+    plain = json.dumps({"smsOtp": {"otpSmsId": sms_id, "otpVal": otp}},
+                       separators=(",", ":"))
+    wire  = json.dumps({"data": encrypt_body(plain, ts)})
+
+    print(f"\n{'='*60}")
+    print(f"  STEP 2 — Verify OTP (sign-in)")
+    print(f"{'='*60}")
+
+    raw = curl_post_json(ALERT_BASE + VERIFY_OTP_EP, wire, {
+        "timestamp":     ts,
+        "Param2":        "2.0.135",
+        "Param1":        "",
+        "Authorization": f"Bearer {bearer}",
+    })
+    try:
+        rj = json.loads(raw)
+    except Exception:
+        print("  RAW:", raw[:300])
+        return None
+
+    if "data" in rj:
+        dec = decrypt_response(rj["data"], ts)
+        print(f"  Decrypted: {dec}")
+        try:
+            return json.loads(dec)
+        except Exception:
+            return {"_raw": dec}
+    print("  Response:", rj)
+    return rj
+
+
+# ── Step 2B: Register ─────────────────────────────────────────────────────────
 def register_user(otp: str, sms_id: int, mobile: str, bearer: str) -> dict | None:
     name  = input("\n   Full name      : ").strip()
     email = input("   Email          : ").strip()
@@ -221,9 +256,13 @@ def main():
     print(f"\n>> OTP sent to {mobile}. Check your SMS.")
     otp = input(">> Enter OTP: ").strip()
 
-    parsed = register_user(otp, sms_id, mobile, bearer)
+    if event == "CTZ_SIG":
+        parsed = verify_otp_signin(otp, sms_id, bearer)
+    else:
+        parsed = register_user(otp, sms_id, mobile, bearer)
+
     if not parsed:
-        print("\nNo response from registration endpoint.")
+        print("\nNo response from endpoint.")
         sys.exit(1)
 
     print(f"\n  statusCode : {parsed.get('statusCode', '')}")

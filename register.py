@@ -156,6 +156,7 @@ FCM_TOKEN = (
 )
 
 def login_user(otp: str, sms_id: int, mobile: str, bearer: str) -> dict | None:
+    mpin  = input("   MPIN (6 digits): ").strip()
     ts    = str(int(time.time() * 1000))
     plain = json.dumps({
         "mparCitizenDevice": {
@@ -166,7 +167,7 @@ def login_user(otp: str, sms_id: int, mobile: str, bearer: str) -> dict | None:
             "deviceId":        "a1b2c3d4e5f6a7b8",
         },
         "smsOtp": {"otpSmsId": sms_id, "otpVal": otp},
-        "mparCitizenUser": {"ctzMobile": mobile},
+        "mparCitizenUser": {"ctzMobile": mobile, "ctzMpin": mpin},
     }, separators=(",", ":"))
     wire  = json.dumps({"data": encrypt_body(plain, ts)})
 
@@ -312,7 +313,7 @@ def main():
     otp = input(">> Enter OTP: ").strip()
 
     if event == "CTZ_SIG":
-        parsed = verify_otp_signin(otp, sms_id, bearer)
+        parsed = login_user(otp, sms_id, mobile, bearer)
     else:
         parsed = register_user(otp, sms_id, mobile, bearer)
 

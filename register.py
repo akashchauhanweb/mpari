@@ -69,7 +69,7 @@ def curl_post_form(url: str, data: dict) -> str:
 
 COOKIE_JAR = "/tmp/mpar_session.txt"
 
-def curl_post_json(url: str, body: str, headers: dict, save_cookies: bool = False, send_cookies: bool = False) -> str:
+def curl_post_json(url: str, body: str, headers: dict, save_cookies: bool = False, send_cookies: bool = False, dump_headers: str = "") -> str:
     cmd = ["curl", "-s", "-k", "--max-time", "15", "-X", "POST", url,
            "-H", "Content-Type: application/json",
            "-H", "Accept: application/json",
@@ -79,6 +79,8 @@ def curl_post_json(url: str, body: str, headers: dict, save_cookies: bool = Fals
         cmd += ["-c", COOKIE_JAR]
     if send_cookies:
         cmd += ["-b", COOKIE_JAR]
+    if dump_headers:
+        cmd += ["-D", dump_headers]
     for k, v in headers.items():
         cmd += ["-H", f"{k}: {v}"]
     cmd += ["-d", body]
@@ -226,7 +228,12 @@ def verify_otp_signin(otp: str, sms_id: int, bearer: str) -> dict | None:
         "Param2":        "2.0.135",
         "Param1":        "",
         "Authorization": f"Bearer {bearer}",
-    }, save_cookies=True)
+    }, save_cookies=True, dump_headers="/tmp/mpar_verify_headers.txt")
+    try:
+        with open("/tmp/mpar_verify_headers.txt") as f:
+            print("  Response headers:\n", f.read())
+    except Exception:
+        pass
     try:
         rj = json.loads(raw)
     except Exception:

@@ -67,12 +67,18 @@ def curl_post_form(url: str, data: dict) -> str:
     print("   curl exit:", result.returncode)
     return result.stdout
 
-def curl_post_json(url: str, body: str, headers: dict) -> str:
+COOKIE_JAR = "/tmp/mpar_session.txt"
+
+def curl_post_json(url: str, body: str, headers: dict, save_cookies: bool = False, send_cookies: bool = False) -> str:
     cmd = ["curl", "-s", "-k", "--max-time", "15", "-X", "POST", url,
            "-H", "Content-Type: application/json",
            "-H", "Accept: application/json",
            "-H", "User-Agent: okhttp/4.9.3",
            "-w", "\nHTTP_STATUS:%{http_code}"]
+    if save_cookies:
+        cmd += ["-c", COOKIE_JAR]
+    if send_cookies:
+        cmd += ["-b", COOKIE_JAR]
     for k, v in headers.items():
         cmd += ["-H", f"{k}: {v}"]
     cmd += ["-d", body]
@@ -187,7 +193,7 @@ def login_user(otp: str, sms_id: int, mobile: str, bearer: str) -> dict | None:
         "Param2":        "2.0.135",
         "Param1":        "",
         "Authorization": f"Bearer {bearer}",
-    })
+    }, send_cookies=True)
     try:
         rj = json.loads(raw)
     except Exception:
@@ -220,7 +226,7 @@ def verify_otp_signin(otp: str, sms_id: int, bearer: str) -> dict | None:
         "Param2":        "2.0.135",
         "Param1":        "",
         "Authorization": f"Bearer {bearer}",
-    })
+    }, save_cookies=True)
     try:
         rj = json.loads(raw)
     except Exception:
@@ -319,6 +325,11 @@ def main():
     otp = input(">> Enter OTP: ").strip()
 
     if event == "CTZ_SIG":
+        # Step 2A: verify OTP (saves session cookie), then step 2B: login with MPIN
+        verified = verify_otp_signin(otp, sms_id, bearer)
+        if not verified or verified.get("statusCode") != "AL001":
+            print(f"\nOTP verify failed: {verified}")
+            sys.exit(1)
         parsed = login_user(otp, sms_id, mobile, bearer)
     else:
         parsed = register_user(otp, sms_id, mobile, bearer)

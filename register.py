@@ -98,14 +98,14 @@ def fetch_token() -> str:
 
 
 # ── Step 1: Send OTP (CTZ_REG) ────────────────────────────────────────────────
-def send_otp_reg(mobile: str, bearer: str) -> tuple[int, str]:
+def send_otp_reg(mobile: str, bearer: str, event: str = "CTZ_REG") -> tuple[int, str]:
     ts    = str(int(time.time() * 1000))
-    plain = json.dumps({"smsAlert": {"smsEvent": "CTZ_REG", "smsMobile": mobile}},
+    plain = json.dumps({"smsAlert": {"smsEvent": event, "smsMobile": mobile}},
                        separators=(",", ":"))
     wire  = json.dumps({"data": encrypt_body(plain, ts)})
 
     print(f"\n{'='*60}")
-    print(f"  STEP 1 — Send OTP to {mobile}  (event=CTZ_REG)")
+    print(f"  STEP 1 — Send OTP to {mobile}  (event={event})")
     print(f"  plain: {plain}")
     print(f"{'='*60}")
 
@@ -203,6 +203,7 @@ def main():
 
     mobile = sys.argv[1]
     bearer = sys.argv[2] if len(sys.argv) > 2 else ""
+    event  = sys.argv[3] if len(sys.argv) > 3 else "CTZ_REG"
 
     if not bearer:
         bearer = fetch_token()
@@ -210,7 +211,7 @@ def main():
             print("ERROR: could not obtain OAuth token — check connectivity")
             sys.exit(1)
 
-    sms_id, status = send_otp_reg(mobile, bearer)
+    sms_id, status = send_otp_reg(mobile, bearer, event)
     if status != "AL001":
         print(f"\nERROR: OTP send failed ({status}).")
         print("If running from EC2 try again from a phone hotspot / non-datacenter IP.")

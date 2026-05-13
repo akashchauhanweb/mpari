@@ -1,0 +1,3 @@
+rootProject.name = 'NextGen mParivahan'
+
+include 'app'

@@ -1,0 +1,92 @@
+package com.zepto;
+
+import android.view.View;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import androidx.appcompat.widget.AppCompatTextView;
+import androidx.cardview.widget.CardView;
+import com.nic.mparivahan.dlservices.widget.CustomWegetLayout;
+import com.nic.mparivahan.dlservices.widget.MyTextView;
+
+/* JADX INFO: loaded from: classes2.dex */
+public abstract class me6 extends lq7 {
+    public final ImageView A;
+    public final ImageView B;
+    public final TextView C;
+    public final TextView D;
+    public final TextView E;
+    public final LinearLayout F;
+    public final LinearLayout G;
+    public final TextView H;
+    public final TextView I;
+    public final TextView J;
+    public final CardView K;
+    public final TextView L;
+    public final TextView M;
+    public final ImageView N;
+    public final LinearLayout O;
+    public final LinearLayout P;
+    public final LinearLayout Q;
+    public final LinearLayout R;
+    public final LinearLayout S;
+    public final ImageView T;
+    public final LinearLayout U;
+    public final AppCompatTextView V;
+    public final CardView W;
+    public final TextView X;
+    public final MyTextView Y;
+    public final TextView Z;
+    public final ImageView a0;
+    public final TextView b0;
+    public final CustomWegetLayout c0;
+    public final ImageView d0;
+    public final ImageView e0;
+    public final ImageView f0;
+    public final CustomWegetLayout g0;
+    public final ImageView w;
+    public final ImageView x;
+    public final ImageView y;
+    public final ImageView z;
+
+    public me6(Object obj, View view, int i, ImageView imageView, ImageView imageView2, ImageView imageView3, ImageView imageView4, ImageView imageView5, ImageView imageView6, TextView textView, TextView textView2, TextView textView3, LinearLayout linearLayout, LinearLayout linearLayout2, TextView textView4, TextView textView5, TextView textView6, CardView cardView, TextView textView7, TextView textView8, ImageView imageView7, LinearLayout linearLayout3, LinearLayout linearLayout4, LinearLayout linearLayout5, LinearLayout linearLayout6, LinearLayout linearLayout7, ImageView imageView8, LinearLayout linearLayout8, AppCompatTextView appCompatTextView, CardView cardView2, TextView textView9, MyTextView myTextView, TextView textView10, ImageView imageView9, TextView textView11, CustomWegetLayout customWegetLayout, ImageView imageView10, ImageView imageView11, ImageView imageView12, CustomWegetLayout customWegetLayout2) {
+        super(obj, view, i);
+        this.w = imageView;
+        this.x = imageView2;
+        this.y = imageView3;
+        this.z = imageView4;
+        this.A = imageView5;
+        this.B = imageView6;
+        this.C = textView;
+        this.D = textView2;
+        this.E = textView3;
+        this.F = linearLayout;
+        this.G = linearLayout2;
+        this.H = textView4;
+        this.I = textView5;
+        this.J = textView6;
+        this.K = cardView;
+        this.L = textView7;
+        this.M = textView8;
+        this.N = imageView7;
+        this.O = linearLayout3;
+        this.P = linearLayout4;
+        this.Q = linearLayout5;
+        this.R = linearLayout6;
+        this.S = linearLayout7;
+        this.T = imageView8;
+        this.U = linearLayout8;
+        this.V = appCompatTextView;
+        this.W = cardView2;
+        this.X = textView9;
+        this.Y = myTextView;
+        this.Z = textView10;
+        this.a0 = imageView9;
+        this.b0 = textView11;
+        this.c0 = customWegetLayout;
+        this.d0 = imageView10;
+        this.e0 = imageView11;
+        this.f0 = imageView12;
+        this.g0 = customWegetLayout2;
+    }
+}

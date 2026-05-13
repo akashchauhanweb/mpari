@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">delhigw.napix.gov.in
+        </domain>
+        <trust-anchors>
+            <certificates src="@raw/napix"/>
+        </trust-anchors>
+    </domain-config>
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">staging.parivahan.gov.in
+        </domain>
+        <trust-anchors>
+            <certificates src="@raw/staging_parivahan_ssl_cert"/>
+        </trust-anchors>
+    </domain-config>
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">mparivahan.parivahan.gov.in
+        </domain>
+        <trust-anchors>
+            <certificates src="@raw/mparivahan"/>
+        </trust-anchors>
+    </domain-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system"/>
+        </trust-anchors>
+    </base-config>
+</network-security-config>

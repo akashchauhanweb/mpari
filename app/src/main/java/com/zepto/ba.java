@@ -1,0 +1,91 @@
+package com.zepto;
+
+import android.view.View;
+import android.widget.CheckBox;
+import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
+import android.widget.Spinner;
+import android.widget.TextView;
+import androidx.appcompat.widget.AppCompatTextView;
+import androidx.cardview.widget.CardView;
+import androidx.recyclerview.widget.RecyclerView;
+import com.nic.mparivahan.dlservices.widget.CustomWegetLayout;
+
+/* JADX INFO: loaded from: classes2.dex */
+public abstract class ba extends lq7 {
+    public final CardView A;
+    public final ImageView B;
+    public final EditText C;
+    public final vy3 D;
+    public final iy3 E;
+    public final RecyclerView F;
+    public final EditText G;
+    public final bs4 H;
+    public final RadioGroup I;
+    public final CardView J;
+    public final TextView K;
+    public final TextView L;
+    public final Spinner M;
+    public final Spinner N;
+    public final Spinner O;
+    public final TextView P;
+    public final CustomWegetLayout Q;
+    public final RadioButton R;
+    public final CheckBox S;
+    public final TextView T;
+    public final TextView U;
+    public final TextView V;
+    public final TextView W;
+    public final AppCompatTextView X;
+    public final AppCompatTextView Y;
+    public final TextView Z;
+    public final TextView a0;
+    public final TextView b0;
+    public final TextView c0;
+    public final RadioButton d0;
+    public final FrameLayout w;
+    public final Spinner x;
+    public final TextView y;
+    public final EditText z;
+
+    public ba(Object obj, View view, int i, FrameLayout frameLayout, Spinner spinner, TextView textView, EditText editText, CardView cardView, ImageView imageView, EditText editText2, vy3 vy3Var, iy3 iy3Var, RecyclerView recyclerView, EditText editText3, bs4 bs4Var, RadioGroup radioGroup, CardView cardView2, TextView textView2, TextView textView3, Spinner spinner2, Spinner spinner3, Spinner spinner4, TextView textView4, CustomWegetLayout customWegetLayout, RadioButton radioButton, CheckBox checkBox, TextView textView5, TextView textView6, TextView textView7, TextView textView8, AppCompatTextView appCompatTextView, AppCompatTextView appCompatTextView2, TextView textView9, TextView textView10, TextView textView11, TextView textView12, RadioButton radioButton2) {
+        super(obj, view, i);
+        this.w = frameLayout;
+        this.x = spinner;
+        this.y = textView;
+        this.z = editText;
+        this.A = cardView;
+        this.B = imageView;
+        this.C = editText2;
+        this.D = vy3Var;
+        this.E = iy3Var;
+        this.F = recyclerView;
+        this.G = editText3;
+        this.H = bs4Var;
+        this.I = radioGroup;
+        this.J = cardView2;
+        this.K = textView2;
+        this.L = textView3;
+        this.M = spinner2;
+        this.N = spinner3;
+        this.O = spinner4;
+        this.P = textView4;
+        this.Q = customWegetLayout;
+        this.R = radioButton;
+        this.S = checkBox;
+        this.T = textView5;
+        this.U = textView6;
+        this.V = textView7;
+        this.W = textView8;
+        this.X = appCompatTextView;
+        this.Y = appCompatTextView2;
+        this.Z = textView9;
+        this.a0 = textView10;
+        this.b0 = textView11;
+        this.c0 = textView12;
+        this.d0 = radioButton2;
+    }
+}

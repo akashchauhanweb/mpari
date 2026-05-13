@@ -1,0 +1,50 @@
+package com.zepto;
+
+/* JADX INFO: loaded from: classes.dex */
+public abstract class e05 {
+    public static final int A = 2131361879;
+    public static final int B = 2131361880;
+    public static final int C = 2131361881;
+    public static final int D = 2131361882;
+    public static final int E = 2131361883;
+    public static final int F = 2131361884;
+    public static final int G = 2131361885;
+    public static final int H = 2131364863;
+    public static final int I = 2131364864;
+    public static final int J = 2131364865;
+    public static final int K = 2131364866;
+    public static final int L = 2131364867;
+    public static final int M = 2131364868;
+    public static final int N = 2131364869;
+    public static final int O = 2131364870;
+    public static final int P = 2131364871;
+    public static final int Q = 2131364873;
+    public static final int R = 2131364874;
+    public static final int S = 2131364875;
+    public static final int a = 2131361853;
+    public static final int b = 2131361854;
+    public static final int c = 2131361855;
+    public static final int d = 2131361856;
+    public static final int e = 2131361857;
+    public static final int f = 2131361858;
+    public static final int g = 2131361859;
+    public static final int h = 2131361860;
+    public static final int i = 2131361861;
+    public static final int j = 2131361862;
+    public static final int k = 2131361863;
+    public static final int l = 2131361864;
+    public static final int m = 2131361865;
+    public static final int n = 2131361866;
+    public static final int o = 2131361867;
+    public static final int p = 2131361868;
+    public static final int q = 2131361869;
+    public static final int r = 2131361870;
+    public static final int s = 2131361871;
+    public static final int t = 2131361872;
+    public static final int u = 2131361873;
+    public static final int v = 2131361874;
+    public static final int w = 2131361875;
+    public static final int x = 2131361876;
+    public static final int y = 2131361877;
+    public static final int z = 2131361878;
+}

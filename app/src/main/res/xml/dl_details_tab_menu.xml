@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<tabs>
+    <tab
+        icon="@drawable/ic_menu_home"
+        id="@+id/home_item"
+        title="@string/home"/>
+    <tab
+        icon="@drawable/ic_save"
+        id="@+id/save_sticker_item"
+        title="@string/save_sticker"/>
+</tabs>

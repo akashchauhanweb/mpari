@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:gravity="top|center_horizontal"
+    android:orientation="horizontal"
+    android:padding="0dp"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="0dp">
+    <LinearLayout
+        android:gravity="top|center_horizontal"
+        android:orientation="vertical"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+        <ImageView
+            android:gravity="center"
+            android:layout_gravity="center"
+            android:id="@+id/steps_image"
+            android:layout_width="35dp"
+            android:layout_height="35dp"/>
+        <TextView
+            android:textSize="9sp"
+            android:textColor="@color/black"
+            android:gravity="center"
+            android:id="@+id/steps_text"
+            android:layout_width="50dp"
+            android:layout_height="match_parent"
+            android:layout_marginTop="5dp"
+            android:text="Change of address"/>
+    </LinearLayout>
+    <LinearLayout
+        android:gravity="center"
+        android:orientation="vertical"
+        android:layout_width="wrap_content"
+        android:layout_height="35dp"
+        android:layout_marginTop="@dimen/_2sdp">
+        <View
+            android:gravity="center"
+            android:layout_gravity="center"
+            android:id="@+id/paymentView"
+            android:background="@color/never_mix"
+            android:layout_width="60dp"
+            android:layout_height="3dp"/>
+    </LinearLayout>
+</LinearLayout>

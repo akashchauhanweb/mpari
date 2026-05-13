@@ -1,0 +1,12 @@
+package com.zepto;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+
+/* JADX INFO: loaded from: classes3.dex */
+@Retention(RetentionPolicy.RUNTIME)
+public @interface uh4 {
+    String[] attributes() default {};
+
+    String[] elements() default {};
+}

@@ -1,0 +1,335 @@
+package com.zepto;
+
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.CheckBox;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.Spinner;
+import android.widget.TextView;
+import androidx.appcompat.widget.AppCompatTextView;
+import androidx.cardview.widget.CardView;
+import com.nic.mparivahan.R;
+
+/* JADX INFO: loaded from: classes2.dex */
+public final class ki0 {
+    public final EditText A;
+    public final EditText B;
+    public final TextView C;
+    public final Spinner D;
+    public final Spinner E;
+    public final CardView F;
+    public final TextView G;
+    public final TextView H;
+    public final v23 I;
+    public final CheckBox J;
+    public final Spinner K;
+    public final TextView L;
+    public final TextView M;
+    public final zh7 N;
+    public final TextView O;
+    public final d47 P;
+    public final TextView Q;
+    public final TextView R;
+    public final CardView S;
+    public final TextView T;
+    public final TextView U;
+    public final TextView V;
+    public final TextView W;
+    public final LinearLayout a;
+    public final TextView b;
+    public final TextView c;
+    public final LinearLayout d;
+    public final AppCompatTextView e;
+    public final Spinner f;
+    public final EditText g;
+    public final EditText h;
+    public final EditText i;
+    public final EditText j;
+    public final TextView k;
+    public final TextView l;
+    public final ImageView m;
+    public final ImageView n;
+    public final AppCompatTextView o;
+    public final TextView p;
+    public final TextView q;
+    public final TextView r;
+    public final TextView s;
+    public final TextView t;
+    public final TextView u;
+    public final LinearLayout v;
+    public final AppCompatTextView w;
+    public final AppCompatTextView x;
+    public final EditText y;
+    public final EditText z;
+
+    public ki0(LinearLayout linearLayout, TextView textView, TextView textView2, LinearLayout linearLayout2, AppCompatTextView appCompatTextView, Spinner spinner, EditText editText, EditText editText2, EditText editText3, EditText editText4, TextView textView3, TextView textView4, ImageView imageView, ImageView imageView2, AppCompatTextView appCompatTextView2, TextView textView5, TextView textView6, TextView textView7, TextView textView8, TextView textView9, TextView textView10, LinearLayout linearLayout3, AppCompatTextView appCompatTextView3, AppCompatTextView appCompatTextView4, EditText editText5, EditText editText6, EditText editText7, EditText editText8, TextView textView11, Spinner spinner2, Spinner spinner3, CardView cardView, TextView textView12, TextView textView13, v23 v23Var, CheckBox checkBox, Spinner spinner4, TextView textView14, TextView textView15, zh7 zh7Var, TextView textView16, d47 d47Var, TextView textView17, TextView textView18, CardView cardView2, TextView textView19, TextView textView20, TextView textView21, TextView textView22) {
+        this.a = linearLayout;
+        this.b = textView;
+        this.c = textView2;
+        this.d = linearLayout2;
+        this.e = appCompatTextView;
+        this.f = spinner;
+        this.g = editText;
+        this.h = editText2;
+        this.i = editText3;
+        this.j = editText4;
+        this.k = textView3;
+        this.l = textView4;
+        this.m = imageView;
+        this.n = imageView2;
+        this.o = appCompatTextView2;
+        this.p = textView5;
+        this.q = textView6;
+        this.r = textView7;
+        this.s = textView8;
+        this.t = textView9;
+        this.u = textView10;
+        this.v = linearLayout3;
+        this.w = appCompatTextView3;
+        this.x = appCompatTextView4;
+        this.y = editText5;
+        this.z = editText6;
+        this.A = editText7;
+        this.B = editText8;
+        this.C = textView11;
+        this.D = spinner2;
+        this.E = spinner3;
+        this.F = cardView;
+        this.G = textView12;
+        this.H = textView13;
+        this.I = v23Var;
+        this.J = checkBox;
+        this.K = spinner4;
+        this.L = textView14;
+        this.M = textView15;
+        this.N = zh7Var;
+        this.O = textView16;
+        this.P = d47Var;
+        this.Q = textView17;
+        this.R = textView18;
+        this.S = cardView2;
+        this.T = textView19;
+        this.U = textView20;
+        this.V = textView21;
+        this.W = textView22;
+    }
+
+    public static ki0 a(View view) {
+        int i = R.id.change_of_address_in_rc;
+        TextView textView = (TextView) zp7.a(view, R.id.change_of_address_in_rc);
+        if (textView != null) {
+            i = R.id.current_address;
+            TextView textView2 = (TextView) zp7.a(view, R.id.current_address);
+            if (textView2 != null) {
+                i = R.id.current_address_linear;
+                LinearLayout linearLayout = (LinearLayout) zp7.a(view, R.id.current_address_linear);
+                if (linearLayout != null) {
+                    i = R.id.current_address_txt;
+                    AppCompatTextView appCompatTextView = (AppCompatTextView) zp7.a(view, R.id.current_address_txt);
+                    if (appCompatTextView != null) {
+                        i = R.id.current_distic_spinner;
+                        Spinner spinner = (Spinner) zp7.a(view, R.id.current_distic_spinner);
+                        if (spinner != null) {
+                            i = R.id.current_house_number;
+                            EditText editText = (EditText) zp7.a(view, R.id.current_house_number);
+                            if (editText != null) {
+                                i = R.id.current_landmark;
+                                EditText editText2 = (EditText) zp7.a(view, R.id.current_landmark);
+                                if (editText2 != null) {
+                                    i = R.id.current_pincode;
+                                    EditText editText3 = (EditText) zp7.a(view, R.id.current_pincode);
+                                    if (editText3 != null) {
+                                        i = R.id.current_village_town;
+                                        EditText editText4 = (EditText) zp7.a(view, R.id.current_village_town);
+                                        if (editText4 != null) {
+                                            i = R.id.district;
+                                            TextView textView3 = (TextView) zp7.a(view, R.id.district);
+                                            if (textView3 != null) {
+                                                i = R.id.district2;
+                                                TextView textView4 = (TextView) zp7.a(view, R.id.district2);
+                                                if (textView4 != null) {
+                                                    i = R.id.down_arrow_current;
+                                                    ImageView imageView = (ImageView) zp7.a(view, R.id.down_arrow_current);
+                                                    if (imageView != null) {
+                                                        i = R.id.down_arrow_perment;
+                                                        ImageView imageView2 = (ImageView) zp7.a(view, R.id.down_arrow_perment);
+                                                        if (imageView2 != null) {
+                                                            i = R.id.header_title_vehicle_details;
+                                                            AppCompatTextView appCompatTextView2 = (AppCompatTextView) zp7.a(view, R.id.header_title_vehicle_details);
+                                                            if (appCompatTextView2 != null) {
+                                                                i = R.id.house_no_and_street_name;
+                                                                TextView textView5 = (TextView) zp7.a(view, R.id.house_no_and_street_name);
+                                                                if (textView5 != null) {
+                                                                    i = R.id.landmark_police_station;
+                                                                    TextView textView6 = (TextView) zp7.a(view, R.id.landmark_police_station);
+                                                                    if (textView6 != null) {
+                                                                        i = R.id.landmark_police_station2;
+                                                                        TextView textView7 = (TextView) zp7.a(view, R.id.landmark_police_station2);
+                                                                        if (textView7 != null) {
+                                                                            i = R.id.new_current_address;
+                                                                            TextView textView8 = (TextView) zp7.a(view, R.id.new_current_address);
+                                                                            if (textView8 != null) {
+                                                                                i = R.id.new_current_address_details;
+                                                                                TextView textView9 = (TextView) zp7.a(view, R.id.new_current_address_details);
+                                                                                if (textView9 != null) {
+                                                                                    i = R.id.new_permanent_address_details;
+                                                                                    TextView textView10 = (TextView) zp7.a(view, R.id.new_permanent_address_details);
+                                                                                    if (textView10 != null) {
+                                                                                        i = R.id.perm_address_linear;
+                                                                                        LinearLayout linearLayout2 = (LinearLayout) zp7.a(view, R.id.perm_address_linear);
+                                                                                        if (linearLayout2 != null) {
+                                                                                            i = R.id.permanent_address;
+                                                                                            AppCompatTextView appCompatTextView3 = (AppCompatTextView) zp7.a(view, R.id.permanent_address);
+                                                                                            if (appCompatTextView3 != null) {
+                                                                                                i = R.id.permanent_address2;
+                                                                                                AppCompatTextView appCompatTextView4 = (AppCompatTextView) zp7.a(view, R.id.permanent_address2);
+                                                                                                if (appCompatTextView4 != null) {
+                                                                                                    i = R.id.permanent_house_no;
+                                                                                                    EditText editText5 = (EditText) zp7.a(view, R.id.permanent_house_no);
+                                                                                                    if (editText5 != null) {
+                                                                                                        i = R.id.permanent_land_mark;
+                                                                                                        EditText editText6 = (EditText) zp7.a(view, R.id.permanent_land_mark);
+                                                                                                        if (editText6 != null) {
+                                                                                                            i = R.id.permanent_pincode;
+                                                                                                            EditText editText7 = (EditText) zp7.a(view, R.id.permanent_pincode);
+                                                                                                            if (editText7 != null) {
+                                                                                                                i = R.id.perme_village_town;
+                                                                                                                EditText editText8 = (EditText) zp7.a(view, R.id.perme_village_town);
+                                                                                                                if (editText8 != null) {
+                                                                                                                    i = R.id.permenent_address;
+                                                                                                                    TextView textView11 = (TextView) zp7.a(view, R.id.permenent_address);
+                                                                                                                    if (textView11 != null) {
+                                                                                                                        i = R.id.permenent_dis_spinner;
+                                                                                                                        Spinner spinner2 = (Spinner) zp7.a(view, R.id.permenent_dis_spinner);
+                                                                                                                        if (spinner2 != null) {
+                                                                                                                            i = R.id.permenent_state_spinner;
+                                                                                                                            Spinner spinner3 = (Spinner) zp7.a(view, R.id.permenent_state_spinner);
+                                                                                                                            if (spinner3 != null) {
+                                                                                                                                i = R.id.perment_address;
+                                                                                                                                CardView cardView = (CardView) zp7.a(view, R.id.perment_address);
+                                                                                                                                if (cardView != null) {
+                                                                                                                                    i = R.id.pincode;
+                                                                                                                                    TextView textView12 = (TextView) zp7.a(view, R.id.pincode);
+                                                                                                                                    if (textView12 != null) {
+                                                                                                                                        i = R.id.pincode2;
+                                                                                                                                        TextView textView13 = (TextView) zp7.a(view, R.id.pincode2);
+                                                                                                                                        if (textView13 != null) {
+                                                                                                                                            i = R.id.rc_ind;
+                                                                                                                                            View viewA = zp7.a(view, R.id.rc_ind);
+                                                                                                                                            if (viewA != null) {
+                                                                                                                                                v23 v23VarA = v23.a(viewA);
+                                                                                                                                                i = R.id.same_as_current;
+                                                                                                                                                CheckBox checkBox = (CheckBox) zp7.a(view, R.id.same_as_current);
+                                                                                                                                                if (checkBox != null) {
+                                                                                                                                                    i = R.id.select_spinner;
+                                                                                                                                                    Spinner spinner4 = (Spinner) zp7.a(view, R.id.select_spinner);
+                                                                                                                                                    if (spinner4 != null) {
+                                                                                                                                                        i = R.id.state;
+                                                                                                                                                        TextView textView14 = (TextView) zp7.a(view, R.id.state);
+                                                                                                                                                        if (textView14 != null) {
+                                                                                                                                                            i = R.id.state2;
+                                                                                                                                                            TextView textView15 = (TextView) zp7.a(view, R.id.state2);
+                                                                                                                                                            if (textView15 != null) {
+                                                                                                                                                                i = R.id.stepper_layout;
+                                                                                                                                                                View viewA2 = zp7.a(view, R.id.stepper_layout);
+                                                                                                                                                                if (viewA2 != null) {
+                                                                                                                                                                    zh7 zh7VarA = zh7.a(viewA2);
+                                                                                                                                                                    i = R.id.submit_cod;
+                                                                                                                                                                    TextView textView16 = (TextView) zp7.a(view, R.id.submit_cod);
+                                                                                                                                                                    if (textView16 != null) {
+                                                                                                                                                                        i = R.id.topHolder;
+                                                                                                                                                                        View viewA3 = zp7.a(view, R.id.topHolder);
+                                                                                                                                                                        if (viewA3 != null) {
+                                                                                                                                                                            d47 d47VarA = d47.a(viewA3);
+                                                                                                                                                                            i = R.id.valid_form;
+                                                                                                                                                                            TextView textView17 = (TextView) zp7.a(view, R.id.valid_form);
+                                                                                                                                                                            if (textView17 != null) {
+                                                                                                                                                                                i = R.id.valid_From_Tv;
+                                                                                                                                                                                TextView textView18 = (TextView) zp7.a(view, R.id.valid_From_Tv);
+                                                                                                                                                                                if (textView18 != null) {
+                                                                                                                                                                                    i = R.id.vehicleDetailsCv;
+                                                                                                                                                                                    CardView cardView2 = (CardView) zp7.a(view, R.id.vehicleDetailsCv);
+                                                                                                                                                                                    if (cardView2 != null) {
+                                                                                                                                                                                        i = R.id.vehicle_number;
+                                                                                                                                                                                        TextView textView19 = (TextView) zp7.a(view, R.id.vehicle_number);
+                                                                                                                                                                                        if (textView19 != null) {
+                                                                                                                                                                                            i = R.id.vehicle_view;
+                                                                                                                                                                                            TextView textView20 = (TextView) zp7.a(view, R.id.vehicle_view);
+                                                                                                                                                                                            if (textView20 != null) {
+                                                                                                                                                                                                i = R.id.village_town_city;
+                                                                                                                                                                                                TextView textView21 = (TextView) zp7.a(view, R.id.village_town_city);
+                                                                                                                                                                                                if (textView21 != null) {
+                                                                                                                                                                                                    i = R.id.village_town_city2;
+                                                                                                                                                                                                    TextView textView22 = (TextView) zp7.a(view, R.id.village_town_city2);
+                                                                                                                                                                                                    if (textView22 != null) {
+                                                                                                                                                                                                        return new ki0((LinearLayout) view, textView, textView2, linearLayout, appCompatTextView, spinner, editText, editText2, editText3, editText4, textView3, textView4, imageView, imageView2, appCompatTextView2, textView5, textView6, textView7, textView8, textView9, textView10, linearLayout2, appCompatTextView3, appCompatTextView4, editText5, editText6, editText7, editText8, textView11, spinner2, spinner3, cardView, textView12, textView13, v23VarA, checkBox, spinner4, textView14, textView15, zh7VarA, textView16, d47VarA, textView17, textView18, cardView2, textView19, textView20, textView21, textView22);
+                                                                                                                                                                                                    }
+                                                                                                                                                                                                }
+                                                                                                                                                                                            }
+                                                                                                                                                                                        }
+                                                                                                                                                                                    }
+                                                                                                                                                                                }
+                                                                                                                                                                            }
+                                                                                                                                                                        }
+                                                                                                                                                                    }
+                                                                                                                                                                }
+                                                                                                                                                            }
+                                                                                                                                                        }
+                                                                                                                                                    }
+                                                                                                                                                }
+                                                                                                                                            }
+                                                                                                                                        }
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                            }
+                                                                                                                        }
+                                                                                                                    }
+                                                                                                                }
+                                                                                                            }
+                                                                                                        }
+                                                                                                    }
+                                                                                                }
+                                                                                            }
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        throw new NullPointerException("Missing required view with ID: ".concat(view.getResources().getResourceName(i)));
+    }
+
+    public static ki0 c(LayoutInflater layoutInflater) {
+        return d(layoutInflater, null, false);
+    }
+
+    public static ki0 d(LayoutInflater layoutInflater, ViewGroup viewGroup, boolean z) {
+        View viewInflate = layoutInflater.inflate(R.layout.changeofaddress_multi, viewGroup, false);
+        if (z) {
+            viewGroup.addView(viewInflate);
+        }
+        return a(viewInflate);
+    }
+
+    public LinearLayout b() {
+        return this.a;
+    }
+}

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:gravity="top|fill_horizontal"
+        android:height="290dp">
+        <color android:color="#ffeaedef"/>
+    </item>
+    <item
+        android:gravity="bottom|fill_horizontal"
+        android:height="560dp">
+        <color android:color="@android:color/white"/>
+    </item>
+</layer-list>

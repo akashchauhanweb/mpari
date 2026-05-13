@@ -71,12 +71,18 @@ def curl_post_json(url: str, body: str, headers: dict) -> str:
     cmd = ["curl", "-s", "-k", "--max-time", "15", "-X", "POST", url,
            "-H", "Content-Type: application/json",
            "-H", "Accept: application/json",
-           "-H", "User-Agent: okhttp/4.9.3"]
+           "-H", "User-Agent: okhttp/4.9.3",
+           "-w", "\nHTTP_STATUS:%{http_code}"]
     for k, v in headers.items():
         cmd += ["-H", f"{k}: {v}"]
     cmd += ["-d", body]
     result = subprocess.run(cmd, capture_output=True, text=True)
-    return result.stdout
+    out = result.stdout
+    if "\nHTTP_STATUS:" in out:
+        body_part, status = out.rsplit("\nHTTP_STATUS:", 1)
+        print(f"  HTTP status: {status.strip()}")
+        return body_part
+    return out
 
 
 # ── Step 0: OAuth token ───────────────────────────────────────────────────────
@@ -143,15 +149,21 @@ def send_otp_reg(mobile: str, bearer: str, event: str = "CTZ_REG") -> tuple[int,
 
 
 # ── Step 2A: Login (existing account via getUserLoginToken) ──────────────────
+FCM_TOKEN = (
+    "APA91bHPRgkFLgO_wJFoZnmBXQZHGc7Y8Kqfk7b4NnfVBNbLNFzRMGGCOq0v5"
+    "B7xLhECNjfVBXl9Y9nkL8MjExampleFCMTokenForMparivahan00000000000000"
+    "000000000000000000000000000000000000000001"
+)
+
 def login_user(otp: str, sms_id: int, mobile: str, bearer: str) -> dict | None:
     ts    = str(int(time.time() * 1000))
     plain = json.dumps({
         "mparCitizenDevice": {
-            "deviceModel":     "Python-Simulator",
+            "deviceModel":     "Samsung SM-G991B",
             "deviceOsType":    "Android",
             "deviceOsVersion": "14",
-            "deviceFcmToken":  "0000000000000000",
-            "deviceId":        "0000000000000000",
+            "deviceFcmToken":  FCM_TOKEN,
+            "deviceId":        "a1b2c3d4e5f6a7b8",
         },
         "smsOtp": {"otpSmsId": sms_id, "otpVal": otp},
         "mparCitizenUser": {"ctzMobile": mobile},
@@ -229,11 +241,11 @@ def register_user(otp: str, sms_id: int, mobile: str, bearer: str) -> dict | Non
     ts    = str(int(time.time() * 1000))
     plain = json.dumps({
         "mparCitizenDevice": {
-            "deviceModel":     "Python-Simulator",
+            "deviceModel":     "Samsung SM-G991B",
             "deviceOsType":    "Android",
             "deviceOsVersion": "14",
-            "deviceFcmToken":  "0000000000000000",
-            "deviceId":        "0000000000000000",
+            "deviceFcmToken":  FCM_TOKEN,
+            "deviceId":        "a1b2c3d4e5f6a7b8",
         },
         "smsOtp": {"otpSmsId": sms_id, "otpVal": otp},
         "mparCitizenUser": {

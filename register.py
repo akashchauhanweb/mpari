@@ -312,7 +312,7 @@ def main():
     otp = input(">> Enter OTP: ").strip()
 
     if event == "CTZ_SIG":
-        parsed = login_user(otp, sms_id, mobile, bearer)
+        parsed = verify_otp_signin(otp, sms_id, bearer)
     else:
         parsed = register_user(otp, sms_id, mobile, bearer)
 

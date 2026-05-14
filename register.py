@@ -29,9 +29,11 @@ from Crypto.Util.Padding import pad, unpad
 OAUTH_URL     = "https://delhigw.napix.gov.in/nic/parivahan/oauth2/token"
 ALERT_BASE    = "https://delhigw.napix.gov.in/nic/parivahan/mparivahan/alertsapi/"
 CITIZEN_BASE  = "https://delhigw.napix.gov.in/nic/parivahan/mparivahan/citizenapi/"
+NRAPI_BASE    = "https://delhigw.napix.gov.in/nic/parivahan/mparivahan/nrapi/"
 SEND_OTP_EP   = "service/forwardOTPAlerts"
 VERIFY_OTP_EP = "service/validateOTPAlerts"
 LOGIN_EP      = "service/getUserLoginToken"
+RC_LOOKUP_EP  = "service/getSearchDocDetails"
 CLIENT_ID     = "b91c303443f61b37106750823881cd2f"
 CLIENT_SECRET = "de83eeeb148878ae375f28756492e8a0"
 PAYMENT_SUFFIX = "!~)#@*&^"
@@ -308,11 +310,55 @@ def register_user(otp: str, sms_id: int, mobile: str, bearer: str) -> dict | Non
     return rj
 
 
+# ── RC vehicle lookup ─────────────────────────────────────────────────────────
+def lookup_rc(rc: str, bearer: str, citizen_id: int = 1) -> None:
+    ts    = str(int(time.time() * 1000))
+    plain = json.dumps({
+        "rcNumber": rc,
+        "recordId": citizen_id,
+        "did": "0000000000000000",
+        "mid": "0000000000",
+        "tid": "",
+    }, separators=(",", ":"))
+    wire  = json.dumps({"data": encrypt_body(plain, ts)})
+
+    print(f"\n{'='*60}")
+    print(f"  RC LOOKUP  : {rc}  citizenId={citizen_id}")
+    print(f"  plain      : {plain}")
+    print(f"{'='*60}")
+
+    raw = curl_post_json(NRAPI_BASE + RC_LOOKUP_EP, wire, {
+        "timestamp":     ts,
+        "Param2":        "2.0.135",
+        "Param1":        str(citizen_id),
+        "Authorization": f"Bearer {bearer}",
+    })
+    try:
+        rj = json.loads(raw)
+    except Exception:
+        print("  RAW:", raw[:500])
+        return
+    if "data" in rj:
+        dec = decrypt_response(rj["data"], ts)
+        print(f"  DECRYPTED: {dec}")
+    else:
+        print(f"  RESPONSE: {json.dumps(rj)[:500]}")
+
+
 # ── main ──────────────────────────────────────────────────────────────────────
 def main():
     if len(sys.argv) < 2:
         print(__doc__)
         sys.exit(1)
+
+    # RC lookup mode: python3 register.py --lookup WB74AN9717 [citizenId]
+    if sys.argv[1] == "--lookup":
+        rc         = sys.argv[2] if len(sys.argv) > 2 else "WB74AN9717"
+        citizen_id = int(sys.argv[3]) if len(sys.argv) > 3 else 1
+        bearer     = fetch_token()
+        if bearer:
+            lookup_rc(rc, bearer, citizen_id)
+        sys.exit(0)
 
     mobile = sys.argv[1]
     bearer = sys.argv[2] if len(sys.argv) > 2 else ""

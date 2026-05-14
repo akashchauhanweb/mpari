@@ -176,20 +176,23 @@ def send_otp(mobile: str, bearer: str, event: str = "CTZ_SIG") -> tuple[int, str
 
 
 # ── Step 2A: OTP verify (sign-in) → returns ctzRecordId ──────────────────────
-def verify_otp(otp: str, sms_id: int, bearer: str) -> dict | None:
+def verify_otp(otp, sms_id, bearer):
     print(f"\n{'='*60}")
     print(f"  STEP 2 — Verify OTP (sign-in path)")
     print(f"{'='*60}")
     body = {"smsOtp": {"otpSmsId": sms_id, "otpVal": otp}}
-    parsed, _ = post_encrypted(ALERT_BASE + VERIFY_OTP_EP, body, bearer, save_cookies=True)
-    if not parsed:
-        return None
-    print(f"  statusCode : {parsed.get('statusCode', '')}")
-    print(f"  statusDesc : {parsed.get('statusDesc', '')}")
-    user = parsed.get("mparCitizenUser", {})
-    if user:
-        print(f"  ctzRecordId: {user.get('ctzRecordId', '')}")
-    return parsed
+    # Try alertsapi (per decompiled c26.g), then citizenapi (per .so string ordering)
+    for base, label in [(ALERT_BASE, "alertsapi"), (CITIZEN_BASE, "citizenapi")]:
+        print(f"  Trying {label}/validateOTPAlerts ...")
+        parsed, _ = post_encrypted(base + VERIFY_OTP_EP, body, bearer, save_cookies=True, retries=2)
+        if parsed:
+            print(f"  statusCode : {parsed.get('statusCode', '')}")
+            print(f"  statusDesc : {parsed.get('statusDesc', '')}")
+            user = parsed.get("mparCitizenUser", {})
+            if user:
+                print(f"  ctzRecordId: {user.get('ctzRecordId', '')}")
+            return parsed
+    return None
 
 
 # ── Step 2B: Register (new account) → validateOTPAlerts with full body ────────
@@ -227,16 +230,17 @@ def register_user(otp: str, sms_id: int, mobile: str, bearer: str,
             "ctzStateCd":    state,
         },
     }
-    # Registration goes to alertsapi/validateOTPAlerts — confirmed from vn7.o() → f11.e()
-    parsed, _ = post_encrypted(ALERT_BASE + VERIFY_OTP_EP, body, bearer, save_cookies=True)
-    if not parsed:
-        return None
-    print(f"  statusCode : {parsed.get('statusCode', '')}")
-    print(f"  statusDesc : {parsed.get('statusDesc', '')}")
-    user = parsed.get("mparCitizenUser", {})
-    if user:
-        print(f"  ctzRecordId: {user.get('ctzRecordId', '')}")
-    return parsed
+    for base, label in [(ALERT_BASE, "alertsapi"), (CITIZEN_BASE, "citizenapi")]:
+        print(f"  Trying {label}/validateOTPAlerts ...")
+        parsed, _ = post_encrypted(base + VERIFY_OTP_EP, body, bearer, save_cookies=True, retries=2)
+        if parsed:
+            print(f"  statusCode : {parsed.get('statusCode', '')}")
+            print(f"  statusDesc : {parsed.get('statusDesc', '')}")
+            user = parsed.get("mparCitizenUser", {})
+            if user:
+                print(f"  ctzRecordId: {user.get('ctzRecordId', '')}")
+            return parsed
+    return None
 
 
 # ── Step 3: Establish session (getUserLoginToken) ──────────────────────────────

@@ -375,6 +375,28 @@ def main():
         print(__doc__)
         sys.exit(1)
 
+    # Retry mode: python3 register.py --retry <mobile> <smsId> <otp> [name] [email] [mpin] [state]
+    if sys.argv[1] == "--retry":
+        mobile = sys.argv[2]
+        sms_id = int(sys.argv[3])
+        otp    = sys.argv[4]
+        name   = sys.argv[5] if len(sys.argv) > 5 else "Akash Chauhan"
+        email  = sys.argv[6] if len(sys.argv) > 6 else "akash.chauhan.web@gmail.com"
+        mpin   = sys.argv[7] if len(sys.argv) > 7 else "988663"
+        state  = sys.argv[8] if len(sys.argv) > 8 else "WB"
+        bearer = fetch_token()
+        if bearer:
+            print(f"\nRetrying registration for {mobile} smsId={sms_id} otp={otp}")
+            parsed = register_user(otp, sms_id, mobile, bearer, name=name, email=email, mpin=mpin, state=state)
+            if parsed:
+                print(f"\n  statusCode : {parsed.get('statusCode', '')}")
+                print(f"  statusDesc : {parsed.get('statusDesc', '')}")
+                user = parsed.get("mparCitizenUser", {})
+                cid  = user.get("ctzRecordId", 0)
+                if cid:
+                    print(f"\n  SUCCESS — citizenId = {cid}")
+        sys.exit(0)
+
     # RC lookup mode: python3 register.py --lookup WB74AN9717 [citizenId]
     if sys.argv[1] == "--lookup":
         rc         = sys.argv[2] if len(sys.argv) > 2 else "WB74AN9717"
@@ -446,7 +468,7 @@ def main():
     otp = input(">> Enter OTP: ").strip()
 
     if event == "CTZ_SIG":
-        parsed = login_user(otp, sms_id, mobile, bearer)
+        parsed = verify_otp_signin(otp, sms_id, bearer)
     elif reg_extra:
         # Details already sent with OTP; getUserLoginToken just needs OTP confirmation
         parsed = register_user(otp, sms_id, mobile, bearer,

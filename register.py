@@ -1,20 +1,29 @@
 #!/usr/bin/env python3
 """
-mParivahan — citizen registration via curl subprocesses.
+mParivahan — citizen registration/sign-in + RC vehicle lookup.
 
-Uses Python only for AES encryption/decryption.
-All HTTP calls go through `curl` so Python SSL is never involved.
-Run this from your phone hotspot (Indian ISP IP) so the OTP send works.
+Uses curl subprocesses for all HTTP (avoids Python SSL issues on macOS).
+Endpoints confirmed from decompiled APK source (vn7.java, c26.java, mt6.java).
 
-Flow:
-  1. Fetch OAuth Bearer token
-  2. Send OTP (CTZ_REG event)  — needs Indian IP
-  3. Register new citizen account with OTP + name/email/mpin/state
-  4. Prints ctzRecordId (citizenId) on success
+REGISTRATION flow (new account):
+  1. alertsapi/forwardOTPAlerts   {smsAlert: {smsEvent: CTZ_REG, smsMobile}}
+  2. alertsapi/validateOTPAlerts  {mparCitizenDevice, smsOtp, mparCitizenUser}
+     → returns ctzRecordId in mparCitizenUser
+  3. citizenapi/getUserLoginToken {citizenLogin: {ctzRecordId,...}, mparCitizenUser: {ctzMpin}}
+     → establishes server-side session needed for nrapi
+
+SIGN-IN flow (existing account):
+  1. alertsapi/forwardOTPAlerts   {smsAlert: {smsEvent: CTZ_SIG, smsMobile}}
+  2. alertsapi/validateOTPAlerts  {smsOtp: {otpSmsId, otpVal}}
+     → returns ctzRecordId in mparCitizenUser
+  3. citizenapi/getUserLoginToken {citizenLogin: {ctzRecordId,...}, mparCitizenUser: {ctzMpin}}
+     → establishes server-side session needed for nrapi
 
 Usage:
-    python3 register.py <MOBILE_NUMBER>
-    python3 register.py <MOBILE_NUMBER> <BEARER_TOKEN>   # skip OAuth fetch
+    python3 register.py <MOBILE>                    # sign-in (existing account)
+    python3 register.py <MOBILE> "" CTZ_REG         # registration (new account)
+    python3 register.py --lookup WB74AN9717 <CID>   # RC lookup (need citizenId)
+    python3 register.py --retry <MOB> <SMSID> <OTP> # retry registration without new OTP
 """
 
 import base64
@@ -26,21 +35,21 @@ import time
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 
-OAUTH_URL     = "https://delhigw.napix.gov.in/nic/parivahan/oauth2/token"
-ALERT_BASE    = "https://delhigw.napix.gov.in/nic/parivahan/mparivahan/alertsapi/"
-CITIZEN_BASE  = "https://delhigw.napix.gov.in/nic/parivahan/mparivahan/citizenapi/"
-NRAPI_BASE    = "https://delhigw.napix.gov.in/nic/parivahan/mparivahan/nrapi/"
-SEND_OTP_EP   = "service/forwardOTPAlerts"
-VERIFY_OTP_EP = "service/validateOTPAlerts"
-LOGIN_EP      = "service/getUserLoginToken"
-RC_LOOKUP_EP  = "service/getSearchDocDetails"
-RC_VERIFY_EP  = "service/verifyRC"
-CLIENT_ID     = "b91c303443f61b37106750823881cd2f"
-CLIENT_SECRET = "de83eeeb148878ae375f28756492e8a0"
+OAUTH_URL      = "https://delhigw.napix.gov.in/nic/parivahan/oauth2/token"
+ALERT_BASE     = "https://delhigw.napix.gov.in/nic/parivahan/mparivahan/alertsapi/"
+CITIZEN_BASE   = "https://delhigw.napix.gov.in/nic/parivahan/mparivahan/citizenapi/"
+NRAPI_BASE     = "https://delhigw.napix.gov.in/nic/parivahan/mparivahan/nrapi/"
+SEND_OTP_EP    = "service/forwardOTPAlerts"
+VERIFY_OTP_EP  = "service/validateOTPAlerts"
+LOGIN_EP       = "service/getUserLoginToken"
+RC_LOOKUP_EP   = "service/getSearchDocDetails"
+CLIENT_ID      = "b91c303443f61b37106750823881cd2f"
+CLIENT_SECRET  = "de83eeeb148878ae375f28756492e8a0"
 PAYMENT_SUFFIX = "!~)#@*&^"
+COOKIE_JAR     = "/tmp/mpar_session.txt"
 
 
-# ── AES-128/ECB/PKCS7 + double Base64 ────────────────────────────────────────
+# ── AES-128/ECB/PKCS7 + double Base64 ─────────────────────────────────────────
 def derive_key(ts: str) -> bytes:
     rev  = ts[::-1]
     part = rev[:4] + rev[len(rev) - 4:]
@@ -59,7 +68,7 @@ def decrypt_response(data_b64: str, ts: str) -> str:
         return f"<decryption failed: {e}>"
 
 
-# ── curl helpers ──────────────────────────────────────────────────────────────
+# ── curl helpers ───────────────────────────────────────────────────────────────
 def curl_post_form(url: str, data: dict) -> str:
     cmd = ["curl", "-s", "-k", "--max-time", "15", "-X", "POST", url]
     for k, v in data.items():
@@ -67,13 +76,12 @@ def curl_post_form(url: str, data: dict) -> str:
     result = subprocess.run(cmd, capture_output=True, text=True)
     if not result.stdout and result.stderr:
         print("   curl stderr:", result.stderr[:300])
-    print("   curl exit:", result.returncode)
     return result.stdout
 
-COOKIE_JAR = "/tmp/mpar_session.txt"
-
-def curl_post_json(url: str, body: str, headers: dict, save_cookies: bool = False, send_cookies: bool = False, dump_headers: str = "") -> str:
-    cmd = ["curl", "-s", "-k", "--max-time", "15", "-X", "POST", url,
+def curl_post_json(url: str, body: str, headers: dict,
+                   save_cookies: bool = False, send_cookies: bool = False) -> tuple[str, str]:
+    ts = str(int(time.time() * 1000))
+    cmd = ["curl", "-s", "-k", "--max-time", "30",
            "-H", "Content-Type: application/json",
            "-H", "Accept: application/json",
            "-H", "User-Agent: okhttp/4.9.3",
@@ -82,23 +90,48 @@ def curl_post_json(url: str, body: str, headers: dict, save_cookies: bool = Fals
         cmd += ["-c", COOKIE_JAR]
     if send_cookies:
         cmd += ["-b", COOKIE_JAR]
-    if dump_headers:
-        cmd += ["-D", dump_headers]
     for k, v in headers.items():
         cmd += ["-H", f"{k}: {v}"]
-    cmd += ["-d", body]
+    cmd += [url, "-d", body]
     result = subprocess.run(cmd, capture_output=True, text=True)
     out = result.stdout
     if "\nHTTP_STATUS:" in out:
         body_part, status = out.rsplit("\nHTTP_STATUS:", 1)
-        print(f"  HTTP status: {status.strip()}")
-        return body_part
-    return out
+        print(f"  HTTP {status.strip()}")
+        return body_part, ts
+    return out, ts
+
+def post_encrypted(url: str, plain_body: dict, bearer: str,
+                   save_cookies: bool = False, send_cookies: bool = False) -> tuple[dict | None, str]:
+    ts    = str(int(time.time() * 1000))
+    plain = json.dumps(plain_body, separators=(",", ":"))
+    wire  = json.dumps({"data": encrypt_body(plain, ts)})
+    print(f"  plain: {plain}")
+    raw, _ = curl_post_json(url, wire, {
+        "timestamp":     ts,
+        "Param2":        "2.0.135",
+        "Param1":        "",
+        "Authorization": f"Bearer {bearer}",
+    }, save_cookies=save_cookies, send_cookies=send_cookies)
+    try:
+        rj = json.loads(raw)
+    except Exception:
+        print("  RAW:", raw[:300])
+        return None, ts
+    if "data" in rj:
+        dec = decrypt_response(rj["data"], ts)
+        print(f"  decrypted: {dec}")
+        try:
+            return json.loads(dec), ts
+        except Exception:
+            return {"_raw": dec}, ts
+    print("  response:", rj)
+    return rj, ts
 
 
-# ── Step 0: OAuth token ───────────────────────────────────────────────────────
+# ── Step 0: OAuth ──────────────────────────────────────────────────────────────
 def fetch_token() -> str:
-    print(">> Fetching OAuth Bearer token (curl) ...")
+    print(">> Fetching OAuth token ...")
     raw = curl_post_form(OAUTH_URL, {
         "grant_type":    "client_credentials",
         "scope":         "napix",
@@ -116,266 +149,156 @@ def fetch_token() -> str:
     return ""
 
 
-# ── Step 1: Send OTP (CTZ_REG) ────────────────────────────────────────────────
-def send_otp_reg(mobile: str, bearer: str, event: str = "CTZ_REG", extra: dict = None) -> tuple[int, str]:
-    ts   = str(int(time.time() * 1000))
-    body = {"smsAlert": {"smsEvent": event, "smsMobile": mobile}}
-    if extra:
-        body.update(extra)
-    plain = json.dumps(body, separators=(",", ":"))
-    wire  = json.dumps({"data": encrypt_body(plain, ts)})
-
+# ── Step 1: Send OTP ───────────────────────────────────────────────────────────
+def send_otp(mobile: str, bearer: str, event: str = "CTZ_SIG") -> tuple[int, str]:
     print(f"\n{'='*60}")
-    print(f"  STEP 1 — Send OTP to {mobile}  (event={event})")
-    print(f"  plain: {plain}")
+    print(f"  STEP 1 — Send OTP  mobile={mobile}  event={event}")
     print(f"{'='*60}")
-
-    raw = curl_post_json(ALERT_BASE + SEND_OTP_EP, wire, {
-        "timestamp":     ts,
-        "Param2":        "2.0.135",
-        "Param1":        "",
-        "Authorization": f"Bearer {bearer}",
-    })
-    try:
-        rj = json.loads(raw)
-    except Exception:
-        print("  RAW:", raw[:300])
+    body = {"smsAlert": {"smsEvent": event, "smsMobile": mobile}}
+    parsed, _ = post_encrypted(ALERT_BASE + SEND_OTP_EP, body, bearer)
+    if not parsed:
         return 0, "ERROR"
-
-    if "data" in rj:
-        dec = decrypt_response(rj["data"], ts)
-        print(f"  Decrypted: {dec}")
-        try:
-            parsed = json.loads(dec)
-        except Exception:
-            return 0, "ERROR"
-    else:
-        print("  Response:", rj)
-        return 0, "ERROR"
-
     status = parsed.get("statusCode", "")
     sms_id = int(parsed.get("recordId", 0))
-    print(f"\n  statusCode : {status}")
+    print(f"  statusCode : {status}")
     print(f"  statusDesc : {parsed.get('statusDesc', '')}")
     print(f"  smsId      : {sms_id}")
     return sms_id, status
 
 
-# ── Step 2A: Login (existing account via getUserLoginToken) ──────────────────
-FCM_TOKEN = (
-    "APA91bHPRgkFLgO_wJFoZnmBXQZHGc7Y8Kqfk7b4NnfVBNbLNFzRMGGCOq0v5"
-    "B7xLhECNjfVBXl9Y9nkL8MjExampleFCMTokenForMparivahan00000000000000"
-    "000000000000000000000000000000000000000001"
-)
-
-def login_user(otp: str, sms_id: int, mobile: str, bearer: str) -> dict | None:
-    mpin  = input("   MPIN (6 digits): ").strip()
-    state = input("   State code (e.g. WB, DL, MH): ").strip().upper()
-    ts    = str(int(time.time() * 1000))
-    plain = json.dumps({
-        "mparCitizenDevice": {
-            "deviceModel":     "Samsung SM-G991B",
-            "deviceOsType":    "Android",
-            "deviceOsVersion": "14",
-            "deviceFcmToken":  "",
-            "deviceId":        "a1b2c3d4e5f6a7b8",
-        },
-        "smsOtp": {"otpSmsId": sms_id, "otpVal": otp},
-        "mparCitizenUser": {
-            "ctzMobile":     mobile,
-            "ctzMpin":       mpin,
-            "ctzMpinStatus": True,
-            "ctzStateCd":    state,
-        },
-    }, separators=(",", ":"))
-    wire  = json.dumps({"data": encrypt_body(plain, ts)})
-
+# ── Step 2A: OTP verify (sign-in) → returns ctzRecordId ──────────────────────
+def verify_otp(otp: str, sms_id: int, bearer: str) -> dict | None:
     print(f"\n{'='*60}")
-    print(f"  STEP 2 — Login (existing account)")
-    print(f"  plain: {plain}")
+    print(f"  STEP 2 — Verify OTP (sign-in path)")
     print(f"{'='*60}")
-
-    # citizenapi may need different headers than alertsapi
-    ctz_cmd = [
-        "curl", "-s", "-k", "--max-time", "30",
-        "-X", "POST", CITIZEN_BASE + LOGIN_EP,
-        "-H", "Content-Type: application/json",
-        "-H", "Accept: application/json",
-        "-H", "Accept-Encoding: gzip",
-        "-H", "Connection: Keep-Alive",
-        "-H", f"timestamp: {ts}",
-        "-H", "Param2: 2.0.135",
-        "-H", "Param1: ",
-        "-H", f"Authorization: Bearer {bearer}",
-        "-b", COOKIE_JAR,
-        "-w", "\nHTTP_STATUS:%{http_code}",
-        "-d", wire,
-    ]
-    import subprocess as _sp
-    _res = _sp.run(ctz_cmd, capture_output=True, text=True, timeout=35)
-    _out = _res.stdout
-    if "\nHTTP_STATUS:" in _out:
-        _body, _st = _out.rsplit("\nHTTP_STATUS:", 1)
-        print(f"  HTTP status: {_st.strip()}")
-        raw = _body
-    else:
-        raw = _out
-    try:
-        rj = json.loads(raw)
-    except Exception:
-        print("  RAW:", raw[:300])
+    body = {"smsOtp": {"otpSmsId": sms_id, "otpVal": otp}}
+    parsed, _ = post_encrypted(ALERT_BASE + VERIFY_OTP_EP, body, bearer, save_cookies=True)
+    if not parsed:
         return None
-    if "data" in rj:
-        dec = decrypt_response(rj["data"], ts)
-        print(f"  Decrypted: {dec}")
-        try:
-            return json.loads(dec)
-        except Exception:
-            return {"_raw": dec}
-    print("  Response:", rj)
-    return rj
+    print(f"  statusCode : {parsed.get('statusCode', '')}")
+    print(f"  statusDesc : {parsed.get('statusDesc', '')}")
+    user = parsed.get("mparCitizenUser", {})
+    if user:
+        print(f"  ctzRecordId: {user.get('ctzRecordId', '')}")
+    return parsed
 
 
-# ── Step 2B: Verify OTP (sign-in path) ───────────────────────────────────────
-def verify_otp_signin(otp: str, sms_id: int, bearer: str) -> dict | None:
-    ts    = str(int(time.time() * 1000))
-    plain = json.dumps({"smsOtp": {"otpSmsId": sms_id, "otpVal": otp}},
-                       separators=(",", ":"))
-    wire  = json.dumps({"data": encrypt_body(plain, ts)})
-
-    print(f"\n{'='*60}")
-    print(f"  STEP 2 — Verify OTP (sign-in)")
-    print(f"{'='*60}")
-
-    raw = curl_post_json(ALERT_BASE + VERIFY_OTP_EP, wire, {
-        "timestamp":     ts,
-        "Param2":        "2.0.135",
-        "Param1":        "",
-        "Authorization": f"Bearer {bearer}",
-    }, save_cookies=True, dump_headers="/tmp/mpar_verify_headers.txt")
-    try:
-        with open("/tmp/mpar_verify_headers.txt") as f:
-            print("  Response headers:\n", f.read())
-    except Exception:
-        pass
-    try:
-        rj = json.loads(raw)
-    except Exception:
-        print("  RAW:", raw[:300])
-        return None
-
-    print(f"  Full raw JSON fields: {list(rj.keys())}")
-    print(f"  Full raw JSON: {json.dumps(rj)[:500]}")
-    if "data" in rj:
-        dec = decrypt_response(rj["data"], ts)
-        print(f"  Decrypted: {dec}")
-        try:
-            return json.loads(dec)
-        except Exception:
-            return {"_raw": dec}
-    print("  Response:", rj)
-    return rj
-
-
-# ── Step 2B: Register ─────────────────────────────────────────────────────────
+# ── Step 2B: Register (new account) → validateOTPAlerts with full body ────────
 def register_user(otp: str, sms_id: int, mobile: str, bearer: str,
                   name: str = "", email: str = "", mpin: str = "", state: str = "") -> dict | None:
     if not name:
         name  = input("\n   Full name      : ").strip()
         email = input("   Email          : ").strip()
         mpin  = input("   MPIN (6 digits): ").strip()
-        state = input("   State code (e.g. DL, WB, MH, KA): ").strip().upper()
+        state = input("   State (WB/DL/MH): ").strip().upper()
 
-    ts    = str(int(time.time() * 1000))
-    plain = json.dumps({
+    print(f"\n{'='*60}")
+    print(f"  STEP 2 — Register (alertsapi/validateOTPAlerts)")
+    print(f"{'='*60}")
+
+    # Body confirmed from mt6.a.z() in decompiled APK
+    body = {
         "mparCitizenDevice": {
             "deviceModel":     "Samsung SM-G991B",
             "deviceOsType":    "Android",
-            "deviceOsVersion": "14",
+            "deviceOsVersion": "walleye",          # Build.DEVICE in app (codename, not version)
             "deviceFcmToken":  "",
             "deviceId":        "a1b2c3d4e5f6a7b8",
         },
-        "smsOtp": {"otpSmsId": sms_id, "otpVal": otp},
+        "smsOtp": {
+            "otpSmsId": sms_id,
+            "otpVal":   otp,
+        },
         "mparCitizenUser": {
             "ctzMobile":     mobile,
             "ctzDispName":   name,
             "ctzEmail":      email,
             "ctzMpin":       mpin,
-            "ctzMpinStatus": True,
+            "ctzMpinStatus": len(mpin) >= 6,
             "ctzStateCd":    state,
         },
-    }, separators=(",", ":"))
-    wire  = json.dumps({"data": encrypt_body(plain, ts)})
+    }
+    # Registration goes to alertsapi/validateOTPAlerts — confirmed from vn7.o() → f11.e()
+    parsed, _ = post_encrypted(ALERT_BASE + VERIFY_OTP_EP, body, bearer, save_cookies=True)
+    if not parsed:
+        return None
+    print(f"  statusCode : {parsed.get('statusCode', '')}")
+    print(f"  statusDesc : {parsed.get('statusDesc', '')}")
+    user = parsed.get("mparCitizenUser", {})
+    if user:
+        print(f"  ctzRecordId: {user.get('ctzRecordId', '')}")
+    return parsed
 
+
+# ── Step 3: Establish session (getUserLoginToken) ──────────────────────────────
+def establish_session(citizen_id: int, mobile: str, mpin: str, bearer: str) -> dict | None:
     print(f"\n{'='*60}")
-    print(f"  STEP 2 — Register account")
+    print(f"  STEP 3 — Establish session (citizenapi/getUserLoginToken)")
     print(f"{'='*60}")
 
-    raw = curl_post_json(CITIZEN_BASE + LOGIN_EP, wire, {
-        "timestamp":     ts,
-        "Param2":        "2.0.135",
-        "Param1":        "",
-        "Authorization": f"Bearer {bearer}",
-    })
-    try:
-        rj = json.loads(raw)
-    except Exception:
-        print("  RAW:", raw[:300])
+    # Body confirmed from mt6.a.F() in decompiled APK
+    body = {
+        "mparCitizenDevice": {
+            "deviceFcmToken": "",
+        },
+        "citizenLogin": {
+            "ctzRecordId": citizen_id,
+            "ctzMobile":   mobile,
+            "ctzDeviceId": "a1b2c3d4e5f6a7b8",
+            "deviceModel": "Samsung SM-G991B",
+        },
+        "mparCitizenUser": {
+            "ctzMpin": mpin,
+        },
+    }
+    parsed, _ = post_encrypted(CITIZEN_BASE + LOGIN_EP, body, bearer, send_cookies=True, save_cookies=True)
+    if not parsed:
         return None
-
-    if "data" in rj:
-        dec = decrypt_response(rj["data"], ts)
-        print(f"  Decrypted: {dec}")
-        try:
-            return json.loads(dec)
-        except Exception:
-            return {"_raw": dec}
-    print("  Response:", rj)
-    return rj
+    print(f"  statusCode : {parsed.get('statusCode', '')}")
+    print(f"  statusDesc : {parsed.get('statusDesc', '')}")
+    return parsed
 
 
-# ── RC vehicle lookup ─────────────────────────────────────────────────────────
-def lookup_rc(rc: str, bearer: str, citizen_id: int = 1) -> None:
-    ts    = str(int(time.time() * 1000))
-    plain = json.dumps({
-        "rcNumber": rc,
-        "recordId": citizen_id,
-        "did": "0000000000000000",
-        "mid": "0000000000",
-        "tid": "",
-    }, separators=(",", ":"))
-    wire  = json.dumps({"data": encrypt_body(plain, ts)})
-
+# ── RC vehicle lookup ──────────────────────────────────────────────────────────
+def lookup_rc(rc: str, bearer: str, citizen_id: int) -> None:
     print(f"\n{'='*60}")
     print(f"  RC LOOKUP  : {rc}  citizenId={citizen_id}")
-    print(f"  plain      : {plain}")
     print(f"{'='*60}")
-
-    raw = curl_post_json(NRAPI_BASE + RC_LOOKUP_EP, wire, {
+    body = {
+        "rcNumber": rc,
+        "recordId": citizen_id,
+        "did":      "a1b2c3d4e5f6a7b8",
+        "mid":      "0000000000",
+        "tid":      "",
+    }
+    ts    = str(int(time.time() * 1000))
+    plain = json.dumps(body, separators=(",", ":"))
+    wire  = json.dumps({"data": encrypt_body(plain, ts)})
+    print(f"  plain: {plain}")
+    raw, _ = curl_post_json(NRAPI_BASE + RC_LOOKUP_EP, wire, {
         "timestamp":     ts,
         "Param2":        "2.0.135",
         "Param1":        str(citizen_id),
         "Authorization": f"Bearer {bearer}",
-    })
+    }, send_cookies=True)
     try:
         rj = json.loads(raw)
     except Exception:
         print("  RAW:", raw[:500])
         return
     if "data" in rj:
-        dec = decrypt_response(rj["data"], ts)
-        print(f"  DECRYPTED: {dec}")
+        print("  DECRYPTED:", decrypt_response(rj["data"], ts))
     else:
-        print(f"  RESPONSE: {json.dumps(rj)[:500]}")
+        print("  RESPONSE:", json.dumps(rj)[:500])
 
 
-# ── main ──────────────────────────────────────────────────────────────────────
+# ── main ───────────────────────────────────────────────────────────────────────
 def main():
     if len(sys.argv) < 2:
         print(__doc__)
         sys.exit(1)
 
-    # Retry mode: python3 register.py --retry <mobile> <smsId> <otp> [name] [email] [mpin] [state]
+    # --retry <mobile> <smsId> <otp> [name] [email] [mpin] [state]
     if sys.argv[1] == "--retry":
         mobile = sys.argv[2]
         sms_id = int(sys.argv[3])
@@ -385,118 +308,96 @@ def main():
         mpin   = sys.argv[7] if len(sys.argv) > 7 else "988663"
         state  = sys.argv[8] if len(sys.argv) > 8 else "WB"
         bearer = fetch_token()
-        if bearer:
-            print(f"\nRetrying registration for {mobile} smsId={sms_id} otp={otp}")
-            parsed = register_user(otp, sms_id, mobile, bearer, name=name, email=email, mpin=mpin, state=state)
-            if parsed:
-                print(f"\n  statusCode : {parsed.get('statusCode', '')}")
-                print(f"  statusDesc : {parsed.get('statusDesc', '')}")
-                user = parsed.get("mparCitizenUser", {})
-                cid  = user.get("ctzRecordId", 0)
-                if cid:
-                    print(f"\n  SUCCESS — citizenId = {cid}")
+        if not bearer:
+            sys.exit(1)
+        parsed = register_user(otp, sms_id, mobile, bearer,
+                               name=name, email=email, mpin=mpin, state=state)
+        if parsed:
+            user = parsed.get("mparCitizenUser", {})
+            cid  = user.get("ctzRecordId", 0)
+            if cid:
+                print(f"\n  SUCCESS — citizenId = {cid}")
+                _do_session_and_lookup(cid, mobile, mpin, bearer)
         sys.exit(0)
 
-    # RC lookup mode: python3 register.py --lookup WB74AN9717 [citizenId]
+    # --lookup <rc> <citizenId>
     if sys.argv[1] == "--lookup":
-        rc         = sys.argv[2] if len(sys.argv) > 2 else "WB74AN9717"
-        citizen_id = int(sys.argv[3]) if len(sys.argv) > 3 else 1
-        bearer     = fetch_token()
-        if bearer:
-            for cid in ([citizen_id] if citizen_id != 1 else [0, 1, 1000, 100000]):
-                lookup_rc(rc, bearer, cid)
-        sys.exit(0)
-
-    # verifyRC mode (anonymous violation reporting — may not need real citizenId)
-    if sys.argv[1] == "--verify":
-        rc     = sys.argv[2] if len(sys.argv) > 2 else "WB74AN9717"
+        rc  = sys.argv[2] if len(sys.argv) > 2 else "WB74AN9717"
+        cid = int(sys.argv[3]) if len(sys.argv) > 3 else 1
         bearer = fetch_token()
         if bearer:
-            ts    = str(int(time.time() * 1000))
-            plain = json.dumps({"rcNumber": rc, "recordId": 1, "did": "0000000000000000", "mid": "0000000000", "tid": ""}, separators=(",", ":"))
-            wire  = json.dumps({"data": encrypt_body(plain, ts)})
-            print(f"\nTrying verifyRC for {rc} ...")
-            raw = curl_post_json(NRAPI_BASE + RC_VERIFY_EP, wire, {
-                "timestamp": ts, "Param2": "2.0.135", "Param1": "1",
-                "Authorization": f"Bearer {bearer}",
-            })
-            try:
-                rj = json.loads(raw)
-                if "data" in rj:
-                    print("DECRYPTED:", decrypt_response(rj["data"], ts))
-                else:
-                    print("RESPONSE:", json.dumps(rj)[:500])
-            except Exception:
-                print("RAW:", raw[:500])
+            lookup_rc(rc, bearer, cid)
         sys.exit(0)
 
     mobile = sys.argv[1]
     bearer = sys.argv[2] if len(sys.argv) > 2 else ""
-    event  = sys.argv[3] if len(sys.argv) > 3 else "CTZ_REG"
+    event  = sys.argv[3] if len(sys.argv) > 3 else "CTZ_SIG"
 
     if not bearer:
         bearer = fetch_token()
         if not bearer:
-            print("ERROR: could not obtain OAuth token — check connectivity")
+            print("ERROR: could not obtain OAuth token")
             sys.exit(1)
 
-    reg_extra = None
-    if event == "CTZ_REG":
-        print("\n  Enter registration details first (app collects these before OTP):")
-        name  = input("   Full name      : ").strip()
-        email = input("   Email          : ").strip()
-        mpin  = input("   MPIN (6 digits): ").strip()
-        state = input("   State code (WB/DL/MH/KA): ").strip().upper()
-        reg_extra = {
-            "mparCitizenDevice": {
-                "deviceModel": "Samsung SM-G991B", "deviceOsType": "Android",
-                "deviceOsVersion": "14", "deviceFcmToken": "", "deviceId": "a1b2c3d4e5f6a7b8",
-            },
-            "mparCitizenUser": {
-                "ctzMobile": mobile, "ctzDispName": name, "ctzEmail": email,
-                "ctzMpin": mpin, "ctzMpinStatus": True, "ctzStateCd": state,
-            },
-        }
-
-    sms_id, status = send_otp_reg(mobile, bearer, event, extra=reg_extra)
+    sms_id, status = send_otp(mobile, bearer, event)
     if status != "AL001":
         print(f"\nERROR: OTP send failed ({status}).")
-        print("If running from EC2 try again from a phone hotspot / non-datacenter IP.")
         sys.exit(1)
 
     print(f"\n>> OTP sent to {mobile}. Check your SMS.")
     otp = input(">> Enter OTP: ").strip()
 
-    if event == "CTZ_SIG":
-        parsed = verify_otp_signin(otp, sms_id, bearer)
-    elif reg_extra:
-        # Details already sent with OTP; getUserLoginToken just needs OTP confirmation
+    name = email = mpin = state = ""
+
+    if event == "CTZ_REG":
+        print("\n  Enter registration details:")
+        name  = input("   Full name      : ").strip()
+        email = input("   Email          : ").strip()
+        mpin  = input("   MPIN (6 digits): ").strip()
+        state = input("   State (WB/DL/MH): ").strip().upper()
         parsed = register_user(otp, sms_id, mobile, bearer,
-                               name=reg_extra["mparCitizenUser"]["ctzDispName"],
-                               email=reg_extra["mparCitizenUser"]["ctzEmail"],
-                               mpin=reg_extra["mparCitizenUser"]["ctzMpin"],
-                               state=reg_extra["mparCitizenUser"]["ctzStateCd"])
+                               name=name, email=email, mpin=mpin, state=state)
     else:
-        parsed = register_user(otp, sms_id, mobile, bearer)
+        parsed = verify_otp(otp, sms_id, bearer)
 
     if not parsed:
-        print("\nNo response from endpoint.")
+        print("\nNo response from server.")
         sys.exit(1)
 
-    print(f"\n  statusCode : {parsed.get('statusCode', '')}")
-    print(f"  statusDesc : {parsed.get('statusDesc', '')}")
-    user = parsed.get("mparCitizenUser", {})
+    status_code = parsed.get("statusCode", "")
+    if status_code != "AL001":
+        print(f"\nFailed: {status_code} — {parsed.get('statusDesc', '')}")
+        sys.exit(1)
+
+    user       = parsed.get("mparCitizenUser", {})
     citizen_id = user.get("ctzRecordId", 0)
 
-    if citizen_id:
-        print(f"\n{'='*60}")
-        print(f"  SUCCESS — citizenId = {citizen_id}")
-        print(f"  Bearer  = {bearer[:60]}...")
-        print(f"{'='*60}")
-        print(f"\nNow look up the vehicle from EC2:")
-        print(f"  python3 call.py WB74AN9717 '{bearer}' {citizen_id}")
+    if not citizen_id:
+        print("\nCould not extract ctzRecordId from response.")
+        sys.exit(1)
+
+    print(f"\n  ctzRecordId = {citizen_id}")
+
+    if not mpin:
+        mpin = input("\n  Enter MPIN for session (needed for RC lookup): ").strip()
+
+    _do_session_and_lookup(citizen_id, mobile, mpin, bearer)
+
+
+def _do_session_and_lookup(citizen_id: int, mobile: str, mpin: str, bearer: str):
+    sess = establish_session(citizen_id, mobile, mpin, bearer)
+    if not sess:
+        print("Session establishment failed — RC lookup may not work.")
+
+    rc = input("\n  RC number to look up (Enter to skip): ").strip()
+    if rc:
+        lookup_rc(rc, bearer, citizen_id)
     else:
-        print("\nCould not extract citizenId from response.")
+        print(f"\n{'='*60}")
+        print(f"  citizenId = {citizen_id}")
+        print(f"  Bearer    = {bearer[:60]}...")
+        print(f"{'='*60}")
+        print(f"\n  python3 register.py --lookup WB74AN9717 {citizen_id}")
 
 
 if __name__ == "__main__":

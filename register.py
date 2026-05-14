@@ -193,12 +193,31 @@ def login_user(otp: str, sms_id: int, mobile: str, bearer: str) -> dict | None:
     print(f"  plain: {plain}")
     print(f"{'='*60}")
 
-    raw = curl_post_json(CITIZEN_BASE + LOGIN_EP, wire, {
-        "timestamp":     ts,
-        "Param2":        "2.0.135",
-        "Param1":        "",
-        "Authorization": f"Bearer {bearer}",
-    }, send_cookies=True)
+    # citizenapi may need different headers than alertsapi
+    ctz_cmd = [
+        "curl", "-s", "-k", "--max-time", "30",
+        "-X", "POST", CITIZEN_BASE + LOGIN_EP,
+        "-H", "Content-Type: application/json",
+        "-H", "Accept: application/json",
+        "-H", "Accept-Encoding: gzip",
+        "-H", "Connection: Keep-Alive",
+        "-H", f"timestamp: {ts}",
+        "-H", "Param2: 2.0.135",
+        "-H", "Param1: ",
+        "-H", f"Authorization: Bearer {bearer}",
+        "-b", COOKIE_JAR,
+        "-w", "\nHTTP_STATUS:%{http_code}",
+        "-d", wire,
+    ]
+    import subprocess as _sp
+    _res = _sp.run(ctz_cmd, capture_output=True, text=True, timeout=35)
+    _out = _res.stdout
+    if "\nHTTP_STATUS:" in _out:
+        _body, _st = _out.rsplit("\nHTTP_STATUS:", 1)
+        print(f"  HTTP status: {_st.strip()}")
+        raw = _body
+    else:
+        raw = _out
     try:
         rj = json.loads(raw)
     except Exception:
@@ -405,11 +424,6 @@ def main():
     otp = input(">> Enter OTP: ").strip()
 
     if event == "CTZ_SIG":
-        # Step 2A: verify OTP (saves session cookie), then step 2B: login with MPIN
-        verified = verify_otp_signin(otp, sms_id, bearer)
-        if not verified or verified.get("statusCode") != "AL001":
-            print(f"\nOTP verify failed: {verified}")
-            sys.exit(1)
         parsed = login_user(otp, sms_id, mobile, bearer)
     else:
         parsed = register_user(otp, sms_id, mobile, bearer)

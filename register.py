@@ -117,10 +117,12 @@ def fetch_token() -> str:
 
 
 # ── Step 1: Send OTP (CTZ_REG) ────────────────────────────────────────────────
-def send_otp_reg(mobile: str, bearer: str, event: str = "CTZ_REG") -> tuple[int, str]:
-    ts    = str(int(time.time() * 1000))
-    plain = json.dumps({"smsAlert": {"smsEvent": event, "smsMobile": mobile}},
-                       separators=(",", ":"))
+def send_otp_reg(mobile: str, bearer: str, event: str = "CTZ_REG", extra: dict = None) -> tuple[int, str]:
+    ts   = str(int(time.time() * 1000))
+    body = {"smsAlert": {"smsEvent": event, "smsMobile": mobile}}
+    if extra:
+        body.update(extra)
+    plain = json.dumps(body, separators=(",", ":"))
     wire  = json.dumps({"data": encrypt_body(plain, ts)})
 
     print(f"\n{'='*60}")
@@ -276,11 +278,13 @@ def verify_otp_signin(otp: str, sms_id: int, bearer: str) -> dict | None:
 
 
 # ── Step 2B: Register ─────────────────────────────────────────────────────────
-def register_user(otp: str, sms_id: int, mobile: str, bearer: str) -> dict | None:
-    name  = input("\n   Full name      : ").strip()
-    email = input("   Email          : ").strip()
-    mpin  = input("   MPIN (6 digits): ").strip()
-    state = input("   State code (e.g. DL, WB, MH, KA): ").strip().upper()
+def register_user(otp: str, sms_id: int, mobile: str, bearer: str,
+                  name: str = "", email: str = "", mpin: str = "", state: str = "") -> dict | None:
+    if not name:
+        name  = input("\n   Full name      : ").strip()
+        email = input("   Email          : ").strip()
+        mpin  = input("   MPIN (6 digits): ").strip()
+        state = input("   State code (e.g. DL, WB, MH, KA): ").strip().upper()
 
     ts    = str(int(time.time() * 1000))
     plain = json.dumps({
@@ -414,7 +418,25 @@ def main():
             print("ERROR: could not obtain OAuth token — check connectivity")
             sys.exit(1)
 
-    sms_id, status = send_otp_reg(mobile, bearer, event)
+    reg_extra = None
+    if event == "CTZ_REG":
+        print("\n  Enter registration details first (app collects these before OTP):")
+        name  = input("   Full name      : ").strip()
+        email = input("   Email          : ").strip()
+        mpin  = input("   MPIN (6 digits): ").strip()
+        state = input("   State code (WB/DL/MH/KA): ").strip().upper()
+        reg_extra = {
+            "mparCitizenDevice": {
+                "deviceModel": "Samsung SM-G991B", "deviceOsType": "Android",
+                "deviceOsVersion": "14", "deviceFcmToken": "", "deviceId": "a1b2c3d4e5f6a7b8",
+            },
+            "mparCitizenUser": {
+                "ctzMobile": mobile, "ctzDispName": name, "ctzEmail": email,
+                "ctzMpin": mpin, "ctzMpinStatus": True, "ctzStateCd": state,
+            },
+        }
+
+    sms_id, status = send_otp_reg(mobile, bearer, event, extra=reg_extra)
     if status != "AL001":
         print(f"\nERROR: OTP send failed ({status}).")
         print("If running from EC2 try again from a phone hotspot / non-datacenter IP.")
@@ -425,6 +447,13 @@ def main():
 
     if event == "CTZ_SIG":
         parsed = login_user(otp, sms_id, mobile, bearer)
+    elif reg_extra:
+        # Details already sent with OTP; getUserLoginToken just needs OTP confirmation
+        parsed = register_user(otp, sms_id, mobile, bearer,
+                               name=reg_extra["mparCitizenUser"]["ctzDispName"],
+                               email=reg_extra["mparCitizenUser"]["ctzEmail"],
+                               mpin=reg_extra["mparCitizenUser"]["ctzMpin"],
+                               state=reg_extra["mparCitizenUser"]["ctzStateCd"])
     else:
         parsed = register_user(otp, sms_id, mobile, bearer)
 

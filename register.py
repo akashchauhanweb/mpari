@@ -101,32 +101,41 @@ def curl_post_json(url: str, body: str, headers: dict,
         return body_part, ts
     return out, ts
 
-def post_encrypted(url: str, plain_body: dict, bearer: str,
-                   save_cookies: bool = False, send_cookies: bool = False) -> tuple[dict | None, str]:
-    ts    = str(int(time.time() * 1000))
-    plain = json.dumps(plain_body, separators=(",", ":"))
-    wire  = json.dumps({"data": encrypt_body(plain, ts)})
-    print(f"  plain: {plain}")
-    raw, _ = curl_post_json(url, wire, {
-        "timestamp":     ts,
-        "Param2":        "2.0.135",
-        "Param1":        "",
-        "Authorization": f"Bearer {bearer}",
-    }, save_cookies=save_cookies, send_cookies=send_cookies)
-    try:
-        rj = json.loads(raw)
-    except Exception:
-        print("  RAW:", raw[:300])
-        return None, ts
-    if "data" in rj:
-        dec = decrypt_response(rj["data"], ts)
-        print(f"  decrypted: {dec}")
+def post_encrypted(url, plain_body, bearer, save_cookies=False, send_cookies=False, retries=3):
+    for attempt in range(retries):
+        ts    = str(int(time.time() * 1000))
+        plain = json.dumps(plain_body, separators=(",", ":"))
+        wire  = json.dumps({"data": encrypt_body(plain, ts)})
+        if attempt == 0:
+            print(f"  plain: {plain}")
+        else:
+            print(f"  [retry {attempt}]")
+        raw, _ = curl_post_json(url, wire, {
+            "timestamp":     ts,
+            "Param2":        "2.0.135",
+            "Param1":        "",
+            "Authorization": f"Bearer {bearer}",
+        }, save_cookies=save_cookies, send_cookies=send_cookies)
+        if "503\n" in raw or "404" in raw[:20] or raw.strip().startswith("<"):
+            print(f"  Server error on attempt {attempt+1}, retrying in 3s ...")
+            time.sleep(3)
+            continue
         try:
-            return json.loads(dec), ts
+            rj = json.loads(raw)
         except Exception:
-            return {"_raw": dec}, ts
-    print("  response:", rj)
-    return rj, ts
+            print("  RAW:", raw[:300])
+            return None, ts
+        if "data" in rj:
+            dec = decrypt_response(rj["data"], ts)
+            print(f"  decrypted: {dec}")
+            try:
+                return json.loads(dec), ts
+            except Exception:
+                return {"_raw": dec}, ts
+        print("  response:", rj)
+        return rj, ts
+    print(f"  All {retries} attempts failed.")
+    return None, ts
 
 
 # ── Step 0: OAuth ──────────────────────────────────────────────────────────────
@@ -297,6 +306,28 @@ def main():
     if len(sys.argv) < 2:
         print(__doc__)
         sys.exit(1)
+
+    # --retry-signin <mobile> <smsId> <otp> <mpin>
+    if sys.argv[1] == "--retry-signin":
+        mobile = sys.argv[2]
+        sms_id = int(sys.argv[3])
+        otp    = sys.argv[4]
+        mpin   = sys.argv[5] if len(sys.argv) > 5 else ""
+        bearer = fetch_token()
+        if not bearer:
+            sys.exit(1)
+        parsed = verify_otp(otp, sms_id, bearer)
+        if parsed and parsed.get("statusCode") == "AL001":
+            user = parsed.get("mparCitizenUser", {})
+            cid  = user.get("ctzRecordId", 0)
+            if cid:
+                print(f"\n  SUCCESS — citizenId = {cid}")
+                if not mpin:
+                    mpin = input("  Enter MPIN for session: ").strip()
+                _do_session_and_lookup(cid, mobile, mpin, bearer)
+        else:
+            print(f"\n  Failed: {parsed}")
+        sys.exit(0)
 
     # --retry <mobile> <smsId> <otp> [name] [email] [mpin] [state]
     if sys.argv[1] == "--retry":

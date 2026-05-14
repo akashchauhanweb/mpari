@@ -181,7 +181,6 @@ def verify_otp(otp, sms_id, bearer):
     print(f"  STEP 2 — Verify OTP (sign-in path)")
     print(f"{'='*60}")
     body = {"smsOtp": {"otpSmsId": sms_id, "otpVal": otp}}
-    # Try alertsapi (per decompiled c26.g), then citizenapi (per .so string ordering)
     for base, label in [(ALERT_BASE, "alertsapi"), (CITIZEN_BASE, "citizenapi")]:
         print(f"  Trying {label}/validateOTPAlerts ...")
         parsed, _ = post_encrypted(base + VERIFY_OTP_EP, body, bearer, save_cookies=True, retries=2)
@@ -193,6 +192,30 @@ def verify_otp(otp, sms_id, bearer):
                 print(f"  ctzRecordId: {user.get('ctzRecordId', '')}")
             return parsed
     return None
+
+
+def get_citizen_id_by_mobile(mobile, bearer):
+    """Try citizenapi/validateCtzUser to fetch ctzRecordId for existing account.
+    Body confirmed from mt6.a.i() in decompiled APK."""
+    body = {
+        "mid": mobile,
+        "did": "a1b2c3d4e5f6a7b8",
+        "mparCitizenUser": {
+            "ctzMobile":     mobile,
+            "ctzMpinStatus": False,
+        },
+    }
+    for ep in ("service/validateCtzUser", "service/validCtzUser"):
+        print(f"\n  Trying citizenapi/{ep} for mobile {mobile} ...")
+        parsed, _ = post_encrypted(CITIZEN_BASE + ep, body, bearer, retries=2)
+        if parsed:
+            print(f"  response: {parsed}")
+            cid = (parsed.get("mparCitizenUser") or {}).get("ctzRecordId")
+            if not cid:
+                cid = parsed.get("ctzRecordId") or parsed.get("recordId")
+            if cid:
+                return int(cid)
+    return 0
 
 
 # ── Step 2B: Register (new account) → validateOTPAlerts with full body ────────
@@ -324,6 +347,9 @@ def main():
         if parsed and parsed.get("statusCode") == "AL001":
             user = parsed.get("mparCitizenUser", {})
             cid  = user.get("ctzRecordId", 0)
+            if not cid:
+                print("\n  No ctzRecordId in OTP verify — trying mobile lookup ...")
+                cid = get_citizen_id_by_mobile(mobile, bearer)
             if cid:
                 print(f"\n  SUCCESS — citizenId = {cid}")
                 if not mpin:
@@ -413,6 +439,10 @@ def main():
 
     user       = parsed.get("mparCitizenUser", {})
     citizen_id = user.get("ctzRecordId", 0)
+
+    if not citizen_id and event == "CTZ_SIG":
+        print("\n  No ctzRecordId in OTP verify response — trying mobile lookup ...")
+        citizen_id = get_citizen_id_by_mobile(mobile, bearer)
 
     if not citizen_id:
         print("\nCould not extract ctzRecordId from response.")

@@ -374,10 +374,17 @@ def main():
             print("ERROR: could not obtain OAuth token")
             sys.exit(1)
 
-    sms_id, status = send_otp(mobile, bearer, event)
-    if status != "AL001":
-        print(f"\nERROR: OTP send failed ({status}).")
-        sys.exit(1)
+    sms_id, status = 0, ""
+    while status != "AL001":
+        sms_id, status = send_otp(mobile, bearer, event)
+        if status == "AL001":
+            break
+        if status in ("AL022",):
+            print(f"\nERROR: Daily OTP limit reached. Try again after midnight IST.")
+            sys.exit(1)
+        print(f"  Server unavailable ({status}), retrying in 30s ... (Ctrl-C to stop)")
+        time.sleep(30)
+        bearer = fetch_token() or bearer
 
     print(f"\n>> OTP sent to {mobile}. Check your SMS.")
     otp = input(">> Enter OTP: ").strip()
